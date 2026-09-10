@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FoxShot</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon.svg" alt="">
+    <div>
+      <strong>FoxShot</strong>
+      <small data-i18n="popupSubtitle">本地截图工具</small>
+    </div>
+  </header>
+  <main>
+    <button data-mode="region"><span>▱</span><div><b data-i18n="regionShot">区域截图</b><small data-i18n="regionHint">框选、调整并标注</small></div></button>
+    <button data-mode="full"><span>▤</span><div><b data-i18n="fullShot">整页截图</b><small data-i18n="fullHint">自动滚动并拼接页面</small></div></button>
+    <button data-mode="long"><span>↕</span><div><b data-i18n="longShot">长截图</b><small data-i18n="longHint">框选后手动或自动滚动</small></div></button>
+  </main>
+  <p id="status" role="status"></p>
+  <footer><button id="open-settings" class="settings-button" type="button"><span>⚙</span><b data-i18n="settings">设置</b></button></footer>
+  <script src="popup.js"></script>
+</body>
+</html>
