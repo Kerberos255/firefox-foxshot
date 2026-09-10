@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FoxShot Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="../icons/icon.svg" alt="">
+      <div><h1>FoxShot</h1><p data-i18n="settingsSubtitle">截图设置</p></div>
+    </header>
+    <section>
+      <h2 data-i18n="shortcutHeading">快捷键</h2>
+      <label for="shortcut" data-i18n="regionShortcutLabel">区域截图快捷键</label>
+      <div class="shortcut-row">
+        <input id="shortcut" type="text" readonly placeholder="Alt+Shift+A" autocomplete="off" spellcheck="false">
+        <button id="save" type="button" data-i18n="saveShortcut">保存</button>
+        <button id="reset" type="button" class="secondary" data-i18n="resetShortcut">恢复默认</button>
+        <button id="manage-shortcuts" type="button" class="secondary" data-i18n="manageShortcuts">Firefox 快捷键管理</button>
+      </div>
+      <p class="hint" data-i18n="shortcutHint">点击输入框后直接按下新的组合键。默认 Alt+Shift+A。若与 Firefox 或其他扩展冲突，该快捷键可能不会触发。</p>
+      <p id="status" role="status"></p>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
