@@ -1,0 +1,89 @@
+{
+  "extensionName": {
+    "message": "FoxShot"
+  },
+  "extensionDescription": {
+    "message": "Region, full-page, and scrolling screenshots with local annotation tools."
+  },
+  "popupSubtitle": {
+    "message": "Local screenshot toolkit"
+  },
+  "regionShot": {
+    "message": "Region screenshot"
+  },
+  "regionHint": {
+    "message": "Select, resize, and annotate"
+  },
+  "fullShot": {
+    "message": "Full-page screenshot"
+  },
+  "fullHint": {
+    "message": "Deterministic fixed-step capture and stitching"
+  },
+  "longShot": {
+    "message": "Scrolling screenshot"
+  },
+  "longHint": {
+    "message": "Lock the start, then extend the lower edge"
+  },
+  "cannotCapture": {
+    "message": "FoxShot cannot capture this page."
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "settingsSubtitle": {
+    "message": "Screenshot settings"
+  },
+  "shortcutHeading": {
+    "message": "Keyboard shortcut"
+  },
+  "regionShortcutLabel": {
+    "message": "Region screenshot shortcut"
+  },
+  "saveShortcut": {
+    "message": "Save"
+  },
+  "resetShortcut": {
+    "message": "Reset default"
+  },
+  "shortcutHint": {
+    "message": "Focus the field and press a new key combination. Default: Alt+Shift+A. If Firefox, the OS, or another extension still owns it, choose another combination."
+  },
+  "pressShortcut": {
+    "message": "Press the new shortcut…"
+  },
+  "shortcutClearedHint": {
+    "message": "Shortcut cleared. Click Save to disable it."
+  },
+  "invalidShortcut": {
+    "message": "That key cannot be used as an extension shortcut."
+  },
+  "shortcutNeedsModifier": {
+    "message": "Letter and number shortcuts need Ctrl, Alt, or Command."
+  },
+  "shortcutReady": {
+    "message": "Shortcut recorded. Click Save to apply it."
+  },
+  "shortcutSaved": {
+    "message": "Shortcut saved. If another extension still fires, choose another combination."
+  },
+  "shortcutReset": {
+    "message": "Reset to the default Alt+Shift+A."
+  },
+  "shortcutSaveFailed": {
+    "message": "Could not save shortcut:"
+  },
+  "captureRegionShortcut": {
+    "message": "Start a FoxShot region screenshot"
+  },
+  "shortcutConflict": {
+    "message": "Firefox did not register this shortcut, or the combination may be occupied. Choose another combination and save it."
+  },
+  "manageShortcuts": {
+    "message": "Firefox shortcut manager"
+  },
+  "shortcutManagerUnavailable": {
+    "message": "Could not open Firefox shortcut settings."
+  }
+}
