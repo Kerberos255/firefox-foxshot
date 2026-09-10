@@ -1,0 +1,89 @@
+{
+  "extensionName": {
+    "message": "FoxShot"
+  },
+  "extensionDescription": {
+    "message": "区域截图、整页截图与滚动长截图，支持本地标注编辑。"
+  },
+  "popupSubtitle": {
+    "message": "本地截图工具"
+  },
+  "regionShot": {
+    "message": "区域截图"
+  },
+  "regionHint": {
+    "message": "框选、调整并标注"
+  },
+  "fullShot": {
+    "message": "整页截图"
+  },
+  "fullHint": {
+    "message": "固定步长捕获并稳定拼接"
+  },
+  "longShot": {
+    "message": "长截图"
+  },
+  "longHint": {
+    "message": "锁定起点，拖下边缘延伸范围"
+  },
+  "cannotCapture": {
+    "message": "这个页面无法截图。"
+  },
+  "settings": {
+    "message": "设置"
+  },
+  "settingsSubtitle": {
+    "message": "截图设置"
+  },
+  "shortcutHeading": {
+    "message": "快捷键"
+  },
+  "regionShortcutLabel": {
+    "message": "区域截图快捷键"
+  },
+  "saveShortcut": {
+    "message": "保存"
+  },
+  "resetShortcut": {
+    "message": "恢复默认"
+  },
+  "shortcutHint": {
+    "message": "点击输入框后直接按下新的组合键。默认 Alt+Shift+A。若仍被 Firefox、系统或其他扩展占用，请换一个组合键。"
+  },
+  "pressShortcut": {
+    "message": "请按下新的快捷键组合…"
+  },
+  "shortcutClearedHint": {
+    "message": "快捷键已清空，点击“保存”即可禁用。"
+  },
+  "invalidShortcut": {
+    "message": "这个按键不能作为扩展快捷键。"
+  },
+  "shortcutNeedsModifier": {
+    "message": "字母和数字快捷键至少需要 Ctrl、Alt 或 Command 修饰键。"
+  },
+  "shortcutReady": {
+    "message": "已记录，点击“保存”应用。"
+  },
+  "shortcutSaved": {
+    "message": "快捷键已保存；若按下仍触发别的扩展，请换一个组合键。"
+  },
+  "shortcutReset": {
+    "message": "已恢复默认 Alt+Shift+A。"
+  },
+  "shortcutSaveFailed": {
+    "message": "无法保存快捷键："
+  },
+  "captureRegionShortcut": {
+    "message": "开始 FoxShot 区域截图"
+  },
+  "shortcutConflict": {
+    "message": "Firefox 没有注册这个快捷键，或该组合可能被占用。请换一个组合键后保存。"
+  },
+  "manageShortcuts": {
+    "message": "Firefox 快捷键管理"
+  },
+  "shortcutManagerUnavailable": {
+    "message": "无法打开 Firefox 快捷键管理页。"
+  }
+}
