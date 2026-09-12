@@ -11,6 +11,17 @@ const DEFAULT_SHORTCUT = "Alt+Shift+A";
 const input = document.getElementById("shortcut");
 const status = document.getElementById("status");
 
+const hideFloatingInput = document.getElementById("hideFloatingElements");
+
+async function loadCaptureSettings() {
+  const settings = await browser.storage.local.get({ hideFloatingElements: true });
+  hideFloatingInput.checked = settings.hideFloatingElements !== false;
+}
+
+hideFloatingInput?.addEventListener("change", async () => {
+  await browser.storage.local.set({ hideFloatingElements: hideFloatingInput.checked });
+});
+
 function setStatus(text, error = false) {
   status.textContent = text;
   status.classList.toggle("error", error);
@@ -116,4 +127,4 @@ document.getElementById("reset").addEventListener("click", async () => {
   }
 });
 
-loadShortcut().catch((error) => setStatus(String(error?.message || error), true));
+Promise.all([loadShortcut(), loadCaptureSettings()]).catch((error) => setStatus(String(error?.message || error), true));

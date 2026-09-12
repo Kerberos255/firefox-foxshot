@@ -85,5 +85,14 @@
   },
   "shortcutManagerUnavailable": {
     "message": "Could not open Firefox shortcut settings."
+  },
+  "captureHeading": {
+    "message": "Capture"
+  },
+  "hideFloatingElementsLabel": {
+    "message": "Ignore fixed and floating elements in full-page and scrolling screenshots"
+  },
+  "hideFloatingElementsHint": {
+    "message": "Enabled by default. Prevents sticky search bars, floating navigation, back-to-top buttons, and similar overlays from repeating or covering the real captured content."
   }
 }

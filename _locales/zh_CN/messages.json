@@ -85,5 +85,14 @@
   },
   "shortcutManagerUnavailable": {
     "message": "无法打开 Firefox 快捷键管理页。"
+  },
+  "captureHeading": {
+    "message": "截图"
+  },
+  "hideFloatingElementsLabel": {
+    "message": "长截图和整页截图时忽略固定/悬浮元素"
+  },
+  "hideFloatingElementsHint": {
+    "message": "默认开启。可避免固定搜索栏、悬浮导航、回到顶部按钮等在拼接结果中重复出现或遮住真正内容。"
   }
 }

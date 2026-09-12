@@ -6,7 +6,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "1.0");
+assert.equal(manifest.version, "1.1");
 assert.equal(manifest.name, "__MSG_extensionName__");
 assert.ok(manifest.permissions.includes("activeTab"));
 assert.ok(manifest.permissions.includes("scripting"));
@@ -73,5 +73,22 @@ assert.ok(!captureSource.includes("captureRectWithoutUI"), "direct off-screen re
 assert.match(captureSource, /runLongAutoScroll/, "drag-to-extend auto-scroll interaction missing");
 assert.ok(!captureSource.includes("手动滚动"), "legacy manual scroll capture UI should be removed");
 assert.ok(!captureSource.includes("自动滚动并采集"), "legacy automatic sampling UI should be removed");
+assert.match(captureSource, /lockResultPageScroll/, "result preview should lock the underlying page scrollbar");
+assert.match(captureSource, /unlockResultPageScroll/, "result preview should restore page scrolling on close");
+assert.match(captureSource, /scrollbar-gutter:stable/, "preview should reserve a stable gutter for its own scrollbar");
+assert.match(captureSource, /result-preview fit-width/, "preview should default to fit-to-width mode");
+assert.match(captureSource, /button\("100%"/, "preview should provide an original-size toggle");
+
+assert.match(captureSource, /result-annotations/, "full/long result preview should have an annotation overlay");
+assert.match(captureSource, /buildResultAnnotationTools/, "full/long result preview annotation toolbar missing");
+assert.match(captureSource, /buildResultDataUrl/, "copy/save should compose result annotations into the PNG");
+assert.match(captureSource, /renderAnnotationList/, "result annotations should share the native PNG annotation renderer");
+assert.match(captureSource, /hideVisibleFloatingElements/, "stitched capture should hide visible fixed/sticky overlays");
+assert.match(captureSource, /stickyIsPinned/, "sticky overlays should only be hidden while pinned");
+assert.match(captureSource, /hideFloatingElements: true/, "floating-element suppression should default on");
+const optionsHtml = fs.readFileSync(path.join(root, "options/options.html"), "utf8");
+const optionsJs = fs.readFileSync(path.join(root, "options/options.js"), "utf8");
+assert.match(optionsHtml, /hideFloatingElements/, "settings toggle for floating elements missing");
+assert.match(optionsJs, /hideFloatingElements/, "settings logic for floating elements missing");
 
 console.log("FoxShot smoke checks passed");

@@ -24,6 +24,8 @@
   let capturedPointerId = null;
   let capturedPointerOwner = null;
   let lastPointer = null;
+  let resultScrollLock = null;
+  let resultEditor = null;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -63,11 +65,52 @@
     });
   }
 
+  function rememberInlineProperty(element, name) {
+    if (!element) return null;
+    return {
+      value: element.style.getPropertyValue(name),
+      priority: element.style.getPropertyPriority(name)
+    };
+  }
+
+  function restoreInlineProperty(element, name, saved) {
+    if (!element || !saved) return;
+    element.style.removeProperty(name);
+    if (saved.value) element.style.setProperty(name, saved.value, saved.priority);
+  }
+
+  function lockResultPageScroll() {
+    if (resultScrollLock) return;
+    const root = document.documentElement;
+    const body = document.body;
+    resultScrollLock = {
+      x: window.scrollX,
+      y: window.scrollY,
+      root,
+      body,
+      rootOverflow: rememberInlineProperty(root, "overflow"),
+      bodyOverflow: rememberInlineProperty(body, "overflow")
+    };
+    root.style.setProperty("overflow", "hidden", "important");
+    if (body) body.style.setProperty("overflow", "hidden", "important");
+  }
+
+  function unlockResultPageScroll() {
+    if (!resultScrollLock) return;
+    const saved = resultScrollLock;
+    resultScrollLock = null;
+    restoreInlineProperty(saved.root, "overflow", saved.rootOverflow);
+    restoreInlineProperty(saved.body, "overflow", saved.bodyOverflow);
+    requestAnimationFrame(() => window.scrollTo(saved.x, saved.y));
+  }
+
   function destroyUI() {
     releasePointer();
+    unlockResultPageScroll();
     if (ui?.host?.isConnected) ui.host.remove();
     ui = null;
     interaction = null;
+    resultEditor = null;
   }
 
   function mountBase() {
@@ -101,14 +144,34 @@
       .hint { top:18px; }
       .hud { top:18px; }
       .result { position:fixed; inset:0; display:flex; flex-direction:column; background:rgba(18,18,20,.94); pointer-events:auto; font:14px system-ui,sans-serif; color:#fff; }
-      .result-head { display:flex; align-items:center; gap:8px; padding:10px 14px; background:#202024; }
-      .result-head strong { margin-right:auto; }
+      .result-head { flex:0 0 auto; display:flex; align-items:center; gap:7px; padding:8px 12px; background:#202024; flex-wrap:wrap; box-shadow:0 1px 0 rgba(255,255,255,.06); }
+      .result-title { display:flex; align-items:center; gap:9px; margin-right:auto; min-width:180px; }
+      .result-title strong { white-space:nowrap; }
       .result-status { color:#b8f0c2; font-size:12px; white-space:nowrap; }
       .result-status.error { color:#ffb4b4; }
-      .result-head button { border:0; border-radius:7px; padding:7px 12px; background:#3c3c44; color:#fff; cursor:pointer; }
+      .result-tools,.result-actions { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+      .result-head .sep { width:1px; height:22px; background:rgba(255,255,255,.18); margin:0 2px; }
+      .result-head button,.result-head select,.result-head input { font:13px system-ui,sans-serif; }
+      .result-head button { height:30px; border:0; border-radius:7px; padding:0 10px; background:#3c3c44; color:#fff; cursor:pointer; }
+      .result-head button.tool { width:30px; padding:0; background:transparent; }
+      .result-head button:hover,.result-head button.active { background:rgba(255,255,255,.16); }
       .result-head button.primary { background:#ff6b35; }
-      .result-body { flex:1; min-height:0; overflow:auto; padding:18px; text-align:center; }
-      .result-body img { max-width:100%; height:auto; box-shadow:0 3px 18px rgba(0,0,0,.5); background:#fff; }
+      .result-head input[type=color] { width:28px; height:28px; padding:2px; border:0; background:transparent; }
+      .result-head select { height:28px; border:0; border-radius:5px; background:#444; color:#fff; }
+      .result-body { flex:1; min-height:0; overflow:auto; padding:28px 48px 40px; text-align:center; overscroll-behavior:contain; scrollbar-gutter:stable; }
+      .result-preview-shell { position:relative; display:block; margin:0 auto; line-height:0; }
+      .result-preview { display:block; width:auto; height:auto; margin:0; box-shadow:0 3px 18px rgba(0,0,0,.5); background:#fff; user-select:none; -webkit-user-drag:none; }
+      .result-preview.fit-width { max-width:calc(100vw - 96px); }
+      .result-preview.actual-size { max-width:none; }
+      .result-annotations { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+      .result-annotations.drawing { pointer-events:auto; cursor:crosshair; touch-action:none; }
+      @media (max-width:900px) {
+        .result-title { width:100%; }
+      }
+      @media (max-width:700px) {
+        .result-body { padding:18px 20px 28px; }
+        .result-preview.fit-width { max-width:calc(100vw - 40px); }
+      }
       .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); padding:8px 12px; border-radius:7px; background:rgba(20,20,20,.92); color:#fff; pointer-events:none; }
       .long-origin { position:fixed; padding:5px 8px; border-radius:6px; background:rgba(255,77,79,.96); color:#fff; font:12px system-ui,sans-serif; pointer-events:none; }
       .long-help { max-width:min(560px,calc(100vw - 32px)); text-align:center; }
@@ -590,10 +653,10 @@
     ctx.putImageData(imageData, left, top);
   }
 
-  function renderAnnotations(canvas, scale, ox, oy) {
+  function renderAnnotationList(canvas, shapeList, scale, ox, oy) {
     const ctx = canvas.getContext("2d");
-    for (const shape of shapes.filter((s) => s.type === "mosaic")) pixelateStroke(ctx, shape, scale, ox, oy, canvas);
-    for (const shape of shapes.filter((s) => s.type !== "mosaic")) {
+    for (const shape of shapeList.filter((s) => s.type === "mosaic")) pixelateStroke(ctx, shape, scale, ox, oy, canvas);
+    for (const shape of shapeList.filter((s) => s.type !== "mosaic")) {
       ctx.save(); ctx.strokeStyle = shape.color || drawColor; ctx.fillStyle = shape.color || drawColor;
       ctx.lineWidth = (shape.width || lineWidth) * scale; ctx.lineCap = "round"; ctx.lineJoin = "round";
       if (shape.type === "rect" || shape.type === "ellipse") {
@@ -610,6 +673,10 @@
       }
       ctx.restore();
     }
+  }
+
+  function renderAnnotations(canvas, scale, ox, oy) {
+    renderAnnotationList(canvas, shapes, scale, ox, oy);
   }
 
   async function buildRegionCanvas() {
@@ -650,9 +717,189 @@
     }
   }
 
+  function resultPoint(editor, event) {
+    const rect = editor.image.getBoundingClientRect();
+    if (!rect.width || !rect.height || !editor.image.naturalWidth || !editor.image.naturalHeight) return null;
+    const x = clamp(event.clientX - rect.left, 0, rect.width);
+    const y = clamp(event.clientY - rect.top, 0, rect.height);
+    return {
+      x: x * editor.image.naturalWidth / rect.width,
+      y: y * editor.image.naturalHeight / rect.height
+    };
+  }
+
+  function resultDisplayScale(editor) {
+    const rect = editor.image.getBoundingClientRect();
+    return rect.width > 0 ? editor.image.naturalWidth / rect.width : 1;
+  }
+
+  function syncResultPreviewSize(editor) {
+    if (!editor?.image?.isConnected || !editor.shell?.isConnected) return;
+    requestAnimationFrame(() => {
+      if (!editor?.image?.isConnected || !editor.shell?.isConnected) return;
+      editor.shell.style.width = `${editor.image.clientWidth}px`;
+      editor.shell.style.height = `${editor.image.clientHeight}px`;
+      if (editor.image.naturalWidth && editor.image.naturalHeight) {
+        editor.svg.setAttribute("viewBox", `0 0 ${editor.image.naturalWidth} ${editor.image.naturalHeight}`);
+      }
+    });
+  }
+
+  function renderResultShapes(editor) {
+    if (!editor?.svg) return;
+    editor.svg.replaceChildren();
+    for (const shape of editor.shapes) {
+      const node = shapeNode(shape);
+      if (node) editor.svg.append(node);
+    }
+    if (editor.interaction?.previewShape) {
+      const node = shapeNode(editor.interaction.previewShape);
+      if (node) editor.svg.append(node);
+    }
+  }
+
+  function markResultAnnotationsChanged(editor) {
+    editor.status.classList.remove("error");
+    editor.status.textContent = editor.shapes.length
+      ? "已添加标注；复制/保存会包含标注"
+      : "标注已清空";
+  }
+
+  function setResultTool(editor, next) {
+    editor.tool = next;
+    editor.svg.classList.toggle("drawing", next !== "browse");
+    for (const item of editor.tools.querySelectorAll("button[data-result-tool]")) {
+      item.classList.toggle("active", item.dataset.resultTool === next);
+    }
+  }
+
+  function finishResultPointer(editor, event, cancelled = false) {
+    const current = editor.interaction;
+    if (!current) return;
+    if (!cancelled && current.previewShape) {
+      const shape = current.previewShape;
+      const valid = (shape.type === "brush" || shape.type === "mosaic")
+        ? shape.points.length > 1
+        : Math.hypot(shape.b.x - shape.a.x, shape.b.y - shape.a.y) > 3;
+      if (valid) {
+        editor.shapes.push(shape);
+        editor.redo = [];
+        markResultAnnotationsChanged(editor);
+      }
+    }
+    try {
+      if (editor.svg.hasPointerCapture?.(event.pointerId)) editor.svg.releasePointerCapture(event.pointerId);
+    } catch (_) {}
+    editor.interaction = null;
+    renderResultShapes(editor);
+  }
+
+  function bindResultDrawing(editor) {
+    editor.svg.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || editor.tool === "browse") return;
+      const p = resultPoint(editor, event);
+      if (!p) return;
+      const scale = resultDisplayScale(editor);
+      if (editor.tool === "text") {
+        const text = window.prompt("输入文字：", "");
+        if (text) {
+          editor.shapes.push({ type:"text", at:p, text, color:drawColor, size:18 * scale });
+          editor.redo = [];
+          renderResultShapes(editor);
+          markResultAnnotationsChanged(editor);
+        }
+        event.preventDefault();
+        return;
+      }
+      if (editor.tool === "brush" || editor.tool === "mosaic") {
+        editor.interaction = { previewShape:{
+          type:editor.tool,
+          points:[p],
+          color:drawColor,
+          width: editor.tool === "mosaic" ? Math.max(20, lineWidth * 6) * scale : lineWidth * scale
+        } };
+      } else {
+        editor.interaction = { previewShape:{ type:editor.tool, a:p, b:p, color:drawColor, width:lineWidth * scale } };
+      }
+      try { editor.svg.setPointerCapture?.(event.pointerId); } catch (_) {}
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    editor.svg.addEventListener("pointermove", (event) => {
+      if (!editor.interaction?.previewShape) return;
+      const p = resultPoint(editor, event);
+      if (!p) return;
+      const shape = editor.interaction.previewShape;
+      if (shape.type === "brush" || shape.type === "mosaic") shape.points.push(p);
+      else shape.b = p;
+      renderResultShapes(editor);
+      event.preventDefault();
+    });
+    editor.svg.addEventListener("pointerup", (event) => finishResultPointer(editor, event));
+    editor.svg.addEventListener("pointercancel", (event) => finishResultPointer(editor, event, true));
+    editor.svg.addEventListener("contextmenu", (event) => event.preventDefault());
+  }
+
+  async function buildResultDataUrl(editor) {
+    if (!editor.shapes.length) return editor.originalDataUrl;
+    const image = await loadImage(editor.originalDataUrl);
+    const canvas = createCanvas(image.naturalWidth || image.width, image.naturalHeight || image.height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    renderAnnotationList(canvas, editor.shapes, 1, 0, 0);
+    return canvas.toDataURL("image/png");
+  }
+
+  function buildResultAnnotationTools(editor) {
+    const tools = make("div", "result-tools");
+    const toolDefs = [
+      ["browse", "↔", "浏览/滚动"], ["rect", "□", "矩形"], ["ellipse", "○", "椭圆"],
+      ["arrow", "↗", "箭头"], ["brush", "✎", "画笔"], ["text", "T", "文字"], ["mosaic", "▦", "马赛克"]
+    ];
+    for (const [name, label, title] of toolDefs) {
+      const item = button(label, title, () => setResultTool(editor, name), "tool");
+      item.dataset.resultTool = name;
+      tools.append(item);
+    }
+    tools.append(make("span", "sep"));
+    const color = document.createElement("input");
+    color.type = "color";
+    color.value = drawColor;
+    color.title = "颜色";
+    color.addEventListener("input", () => { drawColor = color.value; });
+    tools.append(color);
+    const width = document.createElement("select");
+    for (const value of [2,3,5,8]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = `${value}px`;
+      if (value === lineWidth) option.selected = true;
+      width.append(option);
+    }
+    width.addEventListener("change", () => { lineWidth = Number(width.value); });
+    tools.append(width);
+    tools.append(make("span", "sep"));
+    tools.append(button("↶", "撤销", () => {
+      if (!editor.shapes.length) return;
+      editor.redo.push(editor.shapes.pop());
+      renderResultShapes(editor);
+      markResultAnnotationsChanged(editor);
+    }, "tool"));
+    tools.append(button("↷", "重做", () => {
+      if (!editor.redo.length) return;
+      editor.shapes.push(editor.redo.pop());
+      renderResultShapes(editor);
+      markResultAnnotationsChanged(editor);
+    }, "tool"));
+    editor.tools = tools;
+    return tools;
+  }
+
   function showResultDataUrl(dataUrl, title, filenameBase, autoCopy = true) {
     if (!ui) mountBase();
     releasePointer();
+    lockResultPageScroll();
     ui.host.style.display = "";
     for (const child of [...ui.shadow.children]) {
       if (child !== ui.style) child.remove();
@@ -660,37 +907,94 @@
     ui.selectionEl = null; ui.sizeLabel = null; ui.svg = null; ui.stage = null; ui.toolbar = null; ui.hint = null;
     const wrap = make("div", "result");
     const head = make("div", "result-head");
+    const titleGroup = make("div", "result-title");
     const name = make("strong", "", title);
     const status = make("span", "result-status", autoCopy ? "正在复制到剪贴板…" : "");
+    titleGroup.append(name, status);
+    const body = make("div", "result-body");
+    const shell = make("div", "result-preview-shell");
+    const image = document.createElement("img");
+    image.className = "result-preview fit-width";
+    image.alt = title;
+    image.draggable = false;
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "result-annotations");
+    svg.setAttribute("preserveAspectRatio", "none");
+    shell.append(image, svg);
+    body.append(shell);
+
+    const editor = {
+      originalDataUrl:dataUrl,
+      title,
+      filenameBase,
+      image,
+      shell,
+      svg,
+      body,
+      status,
+      shapes:[],
+      redo:[],
+      interaction:null,
+      tool:"browse",
+      tools:null,
+      fitWidth:true
+    };
+    resultEditor = editor;
+    const tools = buildResultAnnotationTools(editor);
+
+    const zoom = button("100%", "按图片原始尺寸显示", () => {
+      editor.fitWidth = !editor.fitWidth;
+      image.classList.toggle("fit-width", editor.fitWidth);
+      image.classList.toggle("actual-size", !editor.fitWidth);
+      zoom.textContent = editor.fitWidth ? "100%" : "适应宽度";
+      zoom.title = editor.fitWidth ? "按图片原始尺寸显示" : "缩放到适应预览宽度";
+      if (editor.fitWidth) body.scrollLeft = 0;
+      syncResultPreviewSize(editor);
+    });
     const copy = button("复制", "复制到剪贴板", async () => {
       try {
         status.classList.remove("error");
-        status.textContent = "正在复制…";
-        await copyDataUrl(dataUrl);
+        status.textContent = editor.shapes.length ? "正在合成标注并复制…" : "正在复制…";
+        await copyDataUrl(await buildResultDataUrl(editor));
         status.textContent = "✓ 已复制到剪贴板";
       } catch (e) {
         status.classList.add("error");
         status.textContent = "复制失败，可点击重试";
         showToast(String(e.message||e),2800);
       }
-    }, "wide");
+    });
     const save = button("保存 PNG", "保存 PNG", async () => {
       try {
         status.classList.remove("error");
-        status.textContent = "正在打开保存对话框…";
-        await browser.runtime.sendMessage({ type:"foxshot.download", dataUrl, filename:`${filenameBase}-${stamp()}.png` });
+        status.textContent = editor.shapes.length ? "正在合成标注…" : "正在打开保存对话框…";
+        const output = await buildResultDataUrl(editor);
+        await browser.runtime.sendMessage({ type:"foxshot.download", dataUrl:output, filename:`${filenameBase}-${stamp()}.png` });
         status.textContent = "✓ 已交给 Firefox 保存";
       } catch (error) {
         status.classList.add("error");
         status.textContent = "保存失败";
         showToast(`保存失败：${String(error?.message || error)}`, 4200);
       }
-    }, "wide primary");
+    }, "primary");
     const close = button("×", "关闭", destroyUI);
-    head.append(name, status, copy, save, close);
-    const body = make("div", "result-body");
-    const image = document.createElement("img"); image.alt = title; image.src = dataUrl;
-    body.append(image); wrap.append(head, body); ui.shadow.append(wrap);
+    const actions = make("div", "result-actions");
+    actions.append(zoom, copy, save, close);
+    head.append(titleGroup, tools, actions);
+    wrap.append(head, body);
+    ui.shadow.append(wrap);
+
+    bindResultDrawing(editor);
+    setResultTool(editor, "browse");
+    image.addEventListener("load", () => {
+      syncResultPreviewSize(editor);
+      renderResultShapes(editor);
+    });
+    image.src = dataUrl;
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => syncResultPreviewSize(editor));
+      observer.observe(image);
+      editor.resizeObserver = observer;
+    }
 
     if (autoCopy) {
       Promise.resolve().then(async () => {
@@ -775,11 +1079,20 @@
     return scroller.getTop();
   }
 
-  function fixedElements() {
+  function stickyIsPinned(style, rect) {
+    if (style.position !== "sticky") return false;
+    const top = style.top !== "auto" ? Number.parseFloat(style.top) : NaN;
+    const bottom = style.bottom !== "auto" ? Number.parseFloat(style.bottom) : NaN;
+    if (Number.isFinite(top) && Math.abs(rect.top - top) <= 3) return true;
+    if (Number.isFinite(bottom) && Math.abs(innerHeight - rect.bottom - bottom) <= 3) return true;
+    return false;
+  }
+
+  function visibleFloatingElements() {
     const result = [];
     const seen = new Set();
-    const xs = [8, innerWidth * 0.25, innerWidth * 0.5, innerWidth * 0.75, Math.max(8, innerWidth - 8)];
-    const ys = [8, 40, 96, innerHeight * 0.5, Math.max(8, innerHeight - 8)];
+    const xs = [6, innerWidth * 0.2, innerWidth * 0.4, innerWidth * 0.6, innerWidth * 0.8, Math.max(6, innerWidth - 6)];
+    const ys = [6, 28, 56, 96, innerHeight * 0.25, innerHeight * 0.5, innerHeight * 0.75, Math.max(6, innerHeight - 6)];
 
     for (const x of xs) {
       for (const y of ys) {
@@ -789,9 +1102,11 @@
             if (element === ui?.host || element?.dataset?.foxshotUi === "true") break;
             if (!seen.has(element)) {
               seen.add(element);
-              const position = getComputedStyle(element).position;
-              if (position === "fixed" || position === "sticky") {
-                result.push([element, element.style.visibility]);
+              const style = getComputedStyle(element);
+              const rect = element.getBoundingClientRect();
+              const visible = rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth;
+              if (visible && (style.position === "fixed" || stickyIsPinned(style, rect))) {
+                result.push(element);
                 break;
               }
             }
@@ -803,8 +1118,34 @@
     return result;
   }
 
-  function setFixedVisibility(entries, hidden) {
-    for (const [element, old] of entries) element.style.visibility = hidden ? "hidden" : old;
+  function hideVisibleFloatingElements(saved) {
+    // Hiding one floating layer can expose another one beneath it. Repeat a
+    // few passes so stacked sticky/fixed bars do not leak into stitched frames.
+    for (let pass = 0; pass < 4; pass += 1) {
+      let changed = false;
+      for (const element of visibleFloatingElements()) {
+        if (saved.has(element)) continue;
+        saved.set(element, rememberInlineProperty(element, "visibility"));
+        element.style.setProperty("visibility", "hidden", "important");
+        changed = true;
+      }
+      if (!changed) break;
+    }
+  }
+
+  function restoreFloatingElements(saved) {
+    for (const [element, oldVisibility] of saved.entries()) {
+      restoreInlineProperty(element, "visibility", oldVisibility);
+    }
+  }
+
+  async function shouldHideFloatingElements() {
+    try {
+      const settings = await browser.storage.local.get({ hideFloatingElements: true });
+      return settings.hideFloatingElements !== false;
+    } catch (_) {
+      return true;
+    }
   }
 
 
@@ -835,13 +1176,12 @@
     const screenX = Math.max(0, Number(options.screenX) || 0);
     const width = Math.max(1, Number(options.width) || 1);
     const status = options.status || null;
-    const hideFixedAfterFirst = options.hideFixedAfterFirst === true && scroller.root;
+    const hideFloating = options.hideFloatingElements ?? await shouldHideFloatingElements();
     const frames = [];
     let cursor = start;
     let scale = null;
     let iterations = 0;
-    let fixedEntries = [];
-    let fixedHidden = false;
+    const floatingEntries = new Map();
 
     try {
       while (cursor < end - 0.5) {
@@ -863,6 +1203,7 @@
           status.textContent = `正在生成截图… ${pct}%`;
         }
 
+        if (hideFloating) hideVisibleFloatingElements(floatingEntries);
         const dataUrl = await captureVisibleWithoutUI(1);
         const image = await loadImage(dataUrl);
         if (scale == null) scale = image.width / innerWidth;
@@ -884,14 +1225,6 @@
           cropHeight,
           outY: cursor - start
         });
-
-        if (hideFixedAfterFirst && !fixedHidden) {
-          fixedEntries = fixedElements();
-          if (fixedEntries.length) {
-            setFixedVisibility(fixedEntries, true);
-            fixedHidden = true;
-          }
-        }
 
         cursor += cropHeight;
       }
@@ -923,7 +1256,7 @@
       }
       return out.toDataURL("image/png");
     } finally {
-      if (fixedHidden) setFixedVisibility(fixedEntries, false);
+      restoreFloatingElements(floatingEntries);
     }
   }
 
@@ -958,8 +1291,7 @@
           end: totalHeight,
           screenX: 0,
           width: innerWidth,
-          status: hud,
-          hideFixedAfterFirst: true
+          status: hud
         });
         await settleScroller(scroller, originTop).catch(() => {});
         window.scrollTo(originX, originY);
@@ -1167,8 +1499,7 @@
         end: s.endContentY,
         screenX: s.screenX,
         width: s.width,
-        status: s.status,
-        hideFixedAfterFirst: true
+        status: s.status
       });
 
       await settleScroller(s.scroller, s.originTop).catch(() => {});
@@ -1191,6 +1522,8 @@
     const bar = make("div", "toolbar");
     const status = make("span", "", "拖住下边缘向下延伸；接近底部会自动滚动");
     status.style.padding = "0 7px";
+    status.style.color = "#ffe08a";
+    status.style.fontWeight = "600";
     const complete = button("完成", "按当前范围生成长截图", completeLongRange, "wide");
     const reselect = button("重选", "重新选择长截图范围", () => startLong(), "wide");
     const cancel = button("取消", "取消长截图", cancelLongRange, "wide");

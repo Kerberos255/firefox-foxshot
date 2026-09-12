@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1
+
+- Lock the underlying page while full-page and scrolling screenshot previews are open so only the FoxShot preview scrollbar remains.
+- Default previews to a slightly inset fit-to-width view, with a `100%` / `适应宽度` toggle.
+- Add rectangle, ellipse, arrow, pen, text, mosaic, undo, and redo tools directly to full-page and scrolling screenshot previews.
+- Copy/save from the preview now composites annotations into the final PNG.
+- Ignore visible fixed and currently pinned sticky overlays during stitched capture by default; add a Settings toggle to preserve them when needed.
+- Restore page scrolling and temporarily hidden floating elements after capture/preview closes.
+- Improve the scrolling-capture range hint contrast for easier reading while extending the lower edge.
+
 ## 1.0
 
 - Initial public test release.
