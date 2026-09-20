@@ -1263,6 +1263,130 @@
     return rect.height > innerHeight + 4;
   }
 
+  function framePixelDiffScore(prevPixels, prevWidth, prevHeight, currPixels, currWidth, currHeight, overlap, matchHeight) {
+    const h = Math.max(1, Math.min(matchHeight, overlap, currHeight, prevHeight));
+    const prevStartY = prevHeight - overlap;
+    if (prevStartY < 0 || prevStartY + h > prevHeight) return Infinity;
+
+    // Sample enough pixels to lock onto text/edges while keeping long captures
+    // cheap. Ignore nearly-flat samples because dark/white backgrounds make
+    // many vertical offsets look equally good.
+    const stepX = Math.max(2, Math.floor(Math.min(prevWidth, currWidth) / 120));
+    const stepY = 2;
+    const width = Math.min(prevWidth, currWidth);
+    let weightedError = 0;
+    let weightTotal = 0;
+
+    for (let y = 0; y < h; y += stepY) {
+      const py = prevStartY + y;
+      const cy = y;
+      for (let x = 0; x < width; x += stepX) {
+        const pp = (py * prevWidth + x) * 4;
+        const cp = (cy * currWidth + x) * 4;
+        const pLum = (prevPixels[pp] * 3 + prevPixels[pp + 1] * 6 + prevPixels[pp + 2]) / 10;
+        const cLum = (currPixels[cp] * 3 + currPixels[cp + 1] * 6 + currPixels[cp + 2]) / 10;
+
+        // Give edges/text more influence than empty background.
+        let edge = 0;
+        if (x + stepX < width) {
+          const pn = (py * prevWidth + Math.min(width - 1, x + stepX)) * 4;
+          const cn = (cy * currWidth + Math.min(width - 1, x + stepX)) * 4;
+          const pNext = (prevPixels[pn] * 3 + prevPixels[pn + 1] * 6 + prevPixels[pn + 2]) / 10;
+          const cNext = (currPixels[cn] * 3 + currPixels[cn + 1] * 6 + currPixels[cn + 2]) / 10;
+          edge = Math.max(Math.abs(pNext - pLum), Math.abs(cNext - cLum));
+        }
+        const weight = edge >= 8 ? 3 : edge >= 3 ? 1.5 : 0.2;
+        weightedError += Math.abs(pLum - cLum) * weight;
+        weightTotal += weight;
+      }
+    }
+    return weightTotal > 0 ? weightedError / weightTotal : Infinity;
+  }
+
+  async function calibrateFramePlacements(frames, scale) {
+    if (frames.length < 2) return frames;
+
+    const decoded = [];
+    for (const frame of frames) {
+      const image = await loadImage(frame.dataUrl);
+      const w = Math.max(1, Math.round(frame.cropWidth * scale));
+      const h = Math.max(1, Math.round(frame.cropHeight * scale));
+      const canvas = createCanvas(w, h);
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        image,
+        frame.cropX * scale,
+        frame.cropY * scale,
+        frame.cropWidth * scale,
+        frame.cropHeight * scale,
+        0,
+        0,
+        w,
+        h
+      );
+      decoded.push({
+        width: w,
+        height: h,
+        pixels: ctx.getImageData(0, 0, w, h).data
+      });
+    }
+
+    const corrected = frames.map((frame) => ({ ...frame }));
+    for (let index = 1; index < corrected.length; index += 1) {
+      const prevFrame = corrected[index - 1];
+      const currFrame = corrected[index];
+      const prev = decoded[index - 1];
+      const curr = decoded[index];
+
+      const predictedOverlapCss =
+        (prevFrame.outY + prevFrame.cropHeight) - currFrame.outY;
+      const predictedOverlap = Math.max(1, Math.round(predictedOverlapCss * scale));
+      const radius = Math.max(24, Math.round(72 * scale));
+      const minOverlap = Math.max(12, predictedOverlap - radius);
+      const maxOverlap = Math.min(
+        prev.height - 1,
+        curr.height - 1,
+        predictedOverlap + radius
+      );
+      if (maxOverlap <= minOverlap) continue;
+
+      let best = null;
+      let second = null;
+      for (let overlap = minOverlap; overlap <= maxOverlap; overlap += 1) {
+        const matchHeight = Math.min(Math.round(84 * scale), overlap, curr.height);
+        const score = framePixelDiffScore(
+          prev.pixels, prev.width, prev.height,
+          curr.pixels, curr.width, curr.height,
+          overlap, matchHeight
+        );
+        const candidate = { overlap, score };
+        if (!best || score < best.score) {
+          second = best;
+          best = candidate;
+        } else if (!second || score < second.score) {
+          second = candidate;
+        }
+      }
+
+      // Exact/static captures score near zero. Dynamic pages may be noisier, so
+      // accept a visual correction when it is either very close or clearly
+      // better than the alternatives. Clamp the correction to the search
+      // radius so a repetitive background cannot create a wild jump.
+      if (!best || !Number.isFinite(best.score)) continue;
+      const separation = second ? second.score - best.score : Infinity;
+      const trustworthy = best.score <= 3.5 || separation >= Math.max(0.35, best.score * 0.08);
+      if (!trustworthy) continue;
+
+      const bestOverlapCss = best.overlap / scale;
+      const correctedOutY = prevFrame.outY + prevFrame.cropHeight - bestOverlapCss;
+      const delta = correctedOutY - currFrame.outY;
+      const maxDelta = radius / scale;
+      if (Math.abs(delta) <= maxDelta + 0.5) currFrame.outY = correctedOutY;
+    }
+    return corrected;
+  }
+
   async function captureScrollerRange(scroller, options) {
     const start = Math.max(0, Number(options.start) || 0);
     const requestedEnd = Math.max(start + 1, Number(options.end) || start + 1);
@@ -1276,7 +1400,10 @@
     let iterations = 0;
     const floatingEntries = new Map();
     const scrollControls = rememberCaptureScrollControls(scroller);
-    const overlap = 2;
+    // A generous overlap lets the compositor visually register adjacent
+    // frames when Firefox's captured bitmap lags/leads scrollTop by a few
+    // pixels (seen on long terminal/log pages and virtualized content).
+    const overlap = Math.max(72, Math.min(128, Math.round(scroller.getViewportHeight() * 0.16)));
 
     applyCaptureScrollControls(scrollControls);
     try {
@@ -1343,8 +1470,10 @@
         throw new Error("截图覆盖范围不完整，为避免生成缺内容的长图已停止");
       }
 
-      const outputWidth = Math.max(1, Math.round(frames[0].cropWidth * scale));
-      const outputHeight = Math.max(1, Math.round(usedHeight * scale));
+      const placedFrames = await calibrateFramePlacements(frames, scale);
+      const calibratedUsedHeight = Math.max(...placedFrames.map((frame) => frame.outY + frame.cropHeight));
+      const outputWidth = Math.max(1, Math.round(placedFrames[0].cropWidth * scale));
+      const outputHeight = Math.max(1, Math.round(calibratedUsedHeight * scale));
       if (outputHeight > MAX_OUTPUT_HEIGHT || outputWidth > 32000) {
         throw new Error("截图超过单张图片安全尺寸，请缩短范围后重试");
       }
@@ -1352,7 +1481,7 @@
       const out = createCanvas(outputWidth, outputHeight);
       const ctx = out.getContext("2d");
       ctx.imageSmoothingEnabled = false;
-      for (const frame of frames) {
+      for (const frame of placedFrames) {
         const image = await loadImage(frame.dataUrl);
         ctx.drawImage(
           image,
@@ -1361,9 +1490,9 @@
           frame.cropWidth * scale,
           frame.cropHeight * scale,
           0,
-          frame.outY * scale,
-          frame.cropWidth * scale,
-          frame.cropHeight * scale
+          Math.round(frame.outY * scale),
+          Math.round(frame.cropWidth * scale),
+          Math.round(frame.cropHeight * scale)
         );
       }
       return out.toDataURL("image/png");
