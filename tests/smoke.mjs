@@ -6,7 +6,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "1.1");
+assert.equal(manifest.version, "1.2");
 assert.equal(manifest.name, "__MSG_extensionName__");
 assert.ok(manifest.permissions.includes("activeTab"));
 assert.ok(manifest.permissions.includes("scripting"));
@@ -60,7 +60,7 @@ assert.match(captureSource, /overflow-anchor/, "capture should disable scroll an
 assert.match(captureSource, /seekScrollerWithoutGap/, "capture should reject forward scroll overshoot gaps");
 assert.match(captureSource, /scrollControls,\s*originBadge/, "long capture should retain temporary scroll controls for cleanup");
 assert.match(captureSource, /applyCaptureScrollControls\(scrollControls\)/, "long selection should neutralize page scroll snapping");
-assert.match(captureSource, /coveredUntil/, "stitching should advance from actual captured coverage");
+assert.match(captureSource, /calibrateFramePlacements/, "stitching should visually calibrate adjacent capture frames");\nassert.match(captureSource, /framePixelDiffScore/, "stitching should compare overlap pixels when aligning seams");
 assert.match(captureSource, /findScrollerAt/, "capture should detect nested scroll containers");
 assert.match(captureSource, /RED_FORBIDDEN_CURSOR/, "selection UI should provide a visible forbidden cursor outside the selection");
 assert.match(captureSource, /pixelateStroke/, "mosaic should be implemented as a brush stroke");
