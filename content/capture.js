@@ -1473,7 +1473,10 @@
       const placedFrames = await calibrateFramePlacements(frames, scale);
       const calibratedUsedHeight = Math.max(...placedFrames.map((frame) => frame.outY + frame.cropHeight));
       const outputWidth = Math.max(1, Math.round(placedFrames[0].cropWidth * scale));
-      const outputHeight = Math.max(1, Math.round(calibratedUsedHeight * scale));
+      // Visual registration may move a frame a few pixels, but the user's
+      // requested range is authoritative. Keep the final bitmap exactly that
+      // tall and let the canvas clip any calibration guard pixels.
+      const outputHeight = Math.max(1, Math.round(targetHeight * scale));
       if (outputHeight > MAX_OUTPUT_HEIGHT || outputWidth > 32000) {
         throw new Error("截图超过单张图片安全尺寸，请缩短范围后重试");
       }
