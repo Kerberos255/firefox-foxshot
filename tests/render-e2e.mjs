@@ -136,14 +136,23 @@ async function driveCapture(page, mode) {
     const state = await page.evaluate(() => {
       const image = document.querySelector(".result-preview");
       const hud = document.querySelector(".hud");
+      const scrolling = document.scrollingElement || document.documentElement;
       return {
         done: Boolean(image?.complete && image.naturalWidth && image.naturalHeight),
-        hud: hud?.textContent || ""
+        hud: hud?.textContent || "",
+        scrollTop: window.scrollY,
+        scrollHeight: Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0),
+        viewport: innerHeight,
+        result: Boolean(document.querySelector(".result")),
+        errorText: document.body?.innerText?.match(/整页截图失败[^\n]*/)?.[0] || ""
       };
     });
     if (state.done) {
-      console.log("FOXSHOT_E2E_CAPTURED", mode, frames);
+      console.log("FOXSHOT_E2E_CAPTURED", mode, frames, JSON.stringify(state));
       return;
+    }
+    if (frames && frames % 5 === 0) {
+      console.log("FOXSHOT_E2E_STATE", mode, frames, JSON.stringify(state));
     }
     if (/失败/.test(state.hud)) throw new Error(state.hud);
     if (frames === 0 && Date.now() + 1000 >= deadline) {
