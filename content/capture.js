@@ -1190,14 +1190,30 @@
   }
 
   function hideVisibleFloatingElements(saved) {
-    // Hiding one floating layer can expose another one beneath it. Repeat a
-    // few passes so stacked sticky/fixed bars do not leak into stitched frames.
+    // Fixed overlays can be hidden safely because they do not participate in
+    // document flow. A pinned sticky element is different: visibility:hidden
+    // preserves its in-flow box, and when a capture seam lands while it is
+    // entering the sticky state that preserved box becomes a blank horizontal
+    // stripe in the stitched image. Neutralize sticky positioning instead so
+    // the element stays in normal document flow and is captured exactly once.
     for (let pass = 0; pass < 4; pass += 1) {
       let changed = false;
       for (const element of visibleFloatingElements()) {
         if (saved.has(element)) continue;
-        saved.set(element, rememberInlineProperty(element, "visibility"));
-        element.style.setProperty("visibility", "hidden", "important");
+        const style = getComputedStyle(element);
+        if (style.position === "sticky") {
+          saved.set(element, {
+            kind: "sticky",
+            position: rememberInlineProperty(element, "position")
+          });
+          element.style.setProperty("position", "relative", "important");
+        } else {
+          saved.set(element, {
+            kind: "hidden",
+            visibility: rememberInlineProperty(element, "visibility")
+          });
+          element.style.setProperty("visibility", "hidden", "important");
+        }
         changed = true;
       }
       if (!changed) break;
@@ -1205,8 +1221,14 @@
   }
 
   function restoreFloatingElements(saved) {
-    for (const [element, oldVisibility] of saved.entries()) {
-      restoreInlineProperty(element, "visibility", oldVisibility);
+    for (const [element, state] of saved.entries()) {
+      if (state?.kind === "sticky") {
+        restoreInlineProperty(element, "position", state.position);
+      } else {
+        // Accept the old map shape as well so cleanup remains safe if capture
+        // is interrupted while code is being hot-reloaded during development.
+        restoreInlineProperty(element, "visibility", state?.visibility ?? state);
+      }
     }
   }
 
