@@ -58,18 +58,23 @@ function fixtureHtml({ nested = false }) {
 }
 
 async function installFoxShotHarness(page) {
-  await page.exposeBinding("__foxshotCapture", async ({ page: sourcePage }) => {
-    const png = await sourcePage.screenshot({ type: "png" });
-    return `data:image/png;base64,${png.toString("base64")}`;
-  });
-
   await page.evaluate(() => {
     const listeners = [];
+    const captureQueue = [];
+    const captureResolvers = new Map();
+    let nextCaptureId = 1;
+
     window.browser = {
       runtime: {
         onMessage: { addListener(fn) { listeners.push(fn); } },
         async sendMessage(message) {
-          if (message?.type === "foxshot.captureVisible") return window.__foxshotCapture();
+          if (message?.type === "foxshot.captureVisible") {
+            return new Promise((resolve, reject) => {
+              const id = nextCaptureId++;
+              captureResolvers.set(id, { resolve, reject });
+              captureQueue.push({ id });
+            });
+          }
           if (message?.type === "foxshot.copyImage") return true;
           if (message?.type === "foxshot.download") return 1;
           return undefined;
@@ -81,6 +86,22 @@ async function installFoxShotHarness(page) {
         }
       }
     };
+
+    window.__foxshotTakeCaptureRequest = () => captureQueue.shift() || null;
+    window.__foxshotResolveCapture = (id, dataUrl) => {
+      const pending = captureResolvers.get(id);
+      if (!pending) return false;
+      captureResolvers.delete(id);
+      pending.resolve(dataUrl);
+      return true;
+    };
+    window.__foxshotRejectCapture = (id, message) => {
+      const pending = captureResolvers.get(id);
+      if (!pending) return false;
+      captureResolvers.delete(id);
+      pending.reject(new Error(message));
+      return true;
+    };
     window.__foxshotDispatch = async (message) => {
       for (const listener of listeners) {
         const result = listener(message);
@@ -90,6 +111,42 @@ async function installFoxShotHarness(page) {
   });
 
   await page.addScriptTag({ content: captureSource });
+}
+
+async function driveCapture(page, mode) {
+  console.log("FOXSHOT_E2E_START", mode);
+  await page.evaluate((requestedMode) => {
+    void window.__foxshotDispatch({ type: "foxshot.start", mode: requestedMode });
+  }, mode);
+
+  const deadline = Date.now() + 45000;
+  let frames = 0;
+  while (Date.now() < deadline) {
+    const request = await page.evaluate(() => window.__foxshotTakeCaptureRequest());
+    if (request) {
+      const png = await page.screenshot({ type: "png" });
+      const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
+      await page.evaluate(({ id, dataUrl }) => window.__foxshotResolveCapture(id, dataUrl), { id: request.id, dataUrl });
+      frames += 1;
+      continue;
+    }
+
+    const state = await page.evaluate(() => {
+      const image = document.querySelector(".result-preview");
+      const hud = document.querySelector(".hud");
+      return {
+        done: Boolean(image?.complete && image.naturalWidth && image.naturalHeight),
+        hud: hud?.textContent || ""
+      };
+    });
+    if (state.done) {
+      console.log("FOXSHOT_E2E_CAPTURED", mode, frames);
+      return;
+    }
+    if (/失败/.test(state.hud)) throw new Error(state.hud);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`${mode} capture timed out after ${frames} frames`);
 }
 
 async function verifyResult(page, name, expectedHeight) {
@@ -136,7 +193,7 @@ async function runCase(browser, name, nested) {
   try {
     await page.setContent(fixtureHtml({ nested }), { waitUntil: "load" });
     await installFoxShotHarness(page);
-    await page.evaluate(() => window.__foxshotDispatch({ type: "foxshot.start", mode: "full" }));
+    await driveCapture(page, "full");
     const expectedHeight = await page.evaluate(() => window.__fixture.totalHeight);
     await verifyResult(page, name, expectedHeight);
   } finally {
