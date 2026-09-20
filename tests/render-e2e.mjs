@@ -2,6 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { firefox } from "playwright";
+import { execFileSync } from "node:child_process";
 
 const root = path.resolve(import.meta.dirname, "..");
 const captureSource = fs.readFileSync(path.join(root, "content/capture.js"), "utf8");
@@ -335,6 +336,10 @@ async function main() {
     await runCase(browser, "nested-scroll-snap", true);
     await runLongCase(browser, "long-root-scroll-snap", false);
     await runLongCase(browser, "long-nested-scroll-snap", true);
+    const builtPath = execFileSync("python3", ["tools/build.py"], { cwd: root, encoding: "utf8" }).trim();
+    const xpiName = "FoxShot-1.1.0-long-capture-test.xpi";
+    artifacts.set(xpiName, fs.readFileSync(builtPath));
+    report.artifacts.push({ name: xpiName, path: `/artifacts/${xpiName}` });
     report.status = "PASS";
   } catch (error) {
     report.status = "FAIL";
@@ -361,7 +366,12 @@ async function main() {
         res.end("not found");
         return;
       }
-      res.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" });
+      const contentType = name.endsWith(".xpi") ? "application/x-xpinstall" : "image/png";
+      res.writeHead(200, {
+        "content-type": contentType,
+        "content-disposition": name.endsWith(".xpi") ? `attachment; filename="${name}"` : "inline",
+        "cache-control": "no-store"
+      });
       res.end(png);
       return;
     }
