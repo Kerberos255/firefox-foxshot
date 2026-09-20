@@ -60,7 +60,8 @@ assert.match(captureSource, /overflow-anchor/, "capture should disable scroll an
 assert.match(captureSource, /seekScrollerWithoutGap/, "capture should reject forward scroll overshoot gaps");
 assert.match(captureSource, /scrollControls,\s*originBadge/, "long capture should retain temporary scroll controls for cleanup");
 assert.match(captureSource, /applyCaptureScrollControls\(scrollControls\)/, "long selection should neutralize page scroll snapping");
-assert.match(captureSource, /calibrateFramePlacements/, "stitching should visually calibrate adjacent capture frames");\nassert.match(captureSource, /framePixelDiffScore/, "stitching should compare overlap pixels when aligning seams");
+assert.match(captureSource, /calibrateFramePlacements/, "stitching should visually calibrate adjacent capture frames");
+assert.match(captureSource, /framePixelDiffScore/, "stitching should compare overlap pixels when aligning seams");
 assert.match(captureSource, /findScrollerAt/, "capture should detect nested scroll containers");
 assert.match(captureSource, /RED_FORBIDDEN_CURSOR/, "selection UI should provide a visible forbidden cursor outside the selection");
 assert.match(captureSource, /pixelateStroke/, "mosaic should be implemented as a brush stroke");
