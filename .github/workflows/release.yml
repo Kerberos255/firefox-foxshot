@@ -23,11 +23,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="$(python3 - <<'PY'
-import json
-print(json.load(open("manifest.json", encoding="utf-8"))["version"])
-PY
-)"
+          VERSION="$(python3 -c 'import json; print(json.load(open("manifest.json", encoding="utf-8"))["version"])')"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Run smoke tests
@@ -48,14 +44,8 @@ PY
           XPI: ${{ steps.build.outputs.xpi }}
         shell: bash
         run: |
+          NOTES=$'FoxShot 1.2 improves long/full-page screenshot reliability in Firefox.\n\n- Pixel-based visual seam alignment for adjacent capture frames.\n- Fixes intermittent missing/duplicated rows when the captured bitmap drifts from scroll coordinates.\n- Better handling for scroll-snap, smooth scrolling, sticky elements, and nested scroll containers.\n- Regression-tested against deliberate 13 px capture drift.'
           gh release create "v$VERSION" "$XPI" \
             --target "$GITHUB_SHA" \
             --title "FoxShot $VERSION" \
-            --notes-file - <<'EOF'
-FoxShot 1.2 improves long/full-page screenshot reliability in Firefox.
-
-- Pixel-based visual seam alignment for adjacent capture frames.
-- Fixes intermittent missing/duplicated rows when the captured bitmap drifts from scroll coordinates.
-- Better handling for scroll-snap, smooth scrolling, sticky elements, and nested scroll containers.
-- Regression-tested against deliberate 13 px capture drift.
-EOF
+            --notes "$NOTES"
