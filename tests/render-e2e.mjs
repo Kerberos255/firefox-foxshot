@@ -13,7 +13,7 @@ function rowColor(y) {
 
 function fixtureHtml({ nested = false }) {
   const sectionHeight = nested ? 370 : 450;
-  const sectionCount = nested ? 12 : 12;
+  const sectionCount = 7;
   const totalHeight = sectionHeight * sectionCount;
   const sections = Array.from({ length: sectionCount }, (_, index) => {
     const start = index * sectionHeight;
