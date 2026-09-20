@@ -5,7 +5,8 @@ import { firefox } from "playwright";
 
 const root = path.resolve(import.meta.dirname, "..");
 const captureSource = fs.readFileSync(path.join(root, "content/capture.js"), "utf8");
-const report = { status: "running", tests: [], errors: [] };
+const report = { status: "running", tests: [], errors: [], artifacts: [] };
+const artifacts = new Map();
 
 function rowColor(y) {
   return [y & 255, (y >> 8) & 255, 97];
@@ -52,6 +53,22 @@ function fixtureHtml({ nested = false }) {
         }
       }
       ctx.putImageData(image, 0, 0);
+      // Keep x=10 untouched for the pixel oracle, but make the rest easy to
+      // inspect by eye: large section labels and hard boundary markers expose
+      // missing or repeated rows immediately.
+      ctx.fillStyle = "rgba(0,0,0,.72)";
+      ctx.fillRect(52, 24, Math.max(0, canvas.width - 72), 74);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 28px sans-serif";
+      ctx.fillText("SECTION " + Math.floor(start / canvas.height), 72, 70);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(52, 0, Math.max(0, canvas.width - 52), 3);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(52, 3, Math.max(0, canvas.width - 52), 3);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(52, canvas.height - 6, Math.max(0, canvas.width - 52), 3);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(52, canvas.height - 3, Math.max(0, canvas.width - 52), 3);
     }
     window.__fixture = { totalHeight: ${totalHeight}, nested: ${nested ? "true" : "false"} };
   </script>`;
@@ -201,13 +218,21 @@ async function verifyResult(page, name, expectedHeight) {
       height: canvas.height,
       expectedHeight,
       mismatchCount: mismatches.length,
-      mismatches
+      mismatches,
+      dataUrl: image.src
     };
   }, { expectedHeight });
 
   const pass = result.height === expectedHeight && result.mismatchCount === 0;
-  report.tests.push({ name, pass, ...result });
-  if (!pass) throw new Error(`${name} failed: ${JSON.stringify(result)}`);
+  const artifactName = `${name}.png`;
+  const match = /^data:image\/png;base64,(.+)$/s.exec(result.dataUrl || "");
+  if (match) {
+    artifacts.set(artifactName, Buffer.from(match[1], "base64"));
+    report.artifacts.push({ name: artifactName, path: `/artifacts/${artifactName}` });
+  }
+  const { dataUrl: _dataUrl, ...publicResult } = result;
+  report.tests.push({ name, pass, ...publicResult });
+  if (!pass) throw new Error(`${name} failed: ${JSON.stringify(publicResult)}`);
 }
 
 async function runCase(browser, name, nested) {
@@ -247,7 +272,20 @@ async function main() {
   }
 
   const port = Number(process.env.PORT || 10000);
-  http.createServer((_req, res) => {
+  http.createServer((req, res) => {
+    const pathname = new URL(req.url || "/", "http://localhost").pathname;
+    if (pathname.startsWith("/artifacts/")) {
+      const name = decodeURIComponent(pathname.slice("/artifacts/".length));
+      const png = artifacts.get(name);
+      if (!png) {
+        res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+        res.end("not found");
+        return;
+      }
+      res.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" });
+      res.end(png);
+      return;
+    }
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(JSON.stringify(report, null, 2));
   }).listen(port, "0.0.0.0", () => {
