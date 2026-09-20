@@ -169,14 +169,40 @@ async function installFoxShotHarness(page) {
   await page.addScriptTag({ content: captureSource });
 }
 
-async function pumpCaptureUntilResult(page, mode) {
+async function pumpCaptureUntilResult(page, mode, captureJitter = 0) {
   const deadline = Date.now() + 150000;
   let frames = 0;
   while (Date.now() < deadline) {
     const request = await page.evaluate(() => window.__foxshotTakeCaptureRequest());
     if (request) {
       console.log("FOXSHOT_E2E_FRAME_REQUEST", mode, request.id, frames);
+      let restore = null;
+      if (captureJitter && frames > 0) {
+        restore = await page.evaluate((delta) => {
+          const scroller = document.querySelector("#scroller");
+          if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+            const before = scroller.scrollTop;
+            scroller.scrollTop = before + delta;
+            return { nested: true, top: before };
+          }
+          const before = window.scrollY;
+          window.scrollTo(window.scrollX, before + delta);
+          return { nested: false, top: before };
+        }, captureJitter);
+        await page.waitForTimeout(30);
+      }
       const png = await page.screenshot({ type: "png", timeout: 10000 });
+      if (restore) {
+        await page.evaluate((state) => {
+          if (state.nested) {
+            const scroller = document.querySelector("#scroller");
+            if (scroller) scroller.scrollTop = state.top;
+          } else {
+            window.scrollTo(window.scrollX, state.top);
+          }
+        }, restore);
+        await page.waitForTimeout(30);
+      }
       console.log("FOXSHOT_E2E_FRAME_READY", mode, request.id, png.length);
       const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
       await page.evaluate(({ id, dataUrl }) => window.__foxshotResolveCapture(id, dataUrl), { id: request.id, dataUrl });
@@ -215,7 +241,7 @@ async function driveCapture(page, mode) {
   return pumpCaptureUntilResult(page, mode);
 }
 
-async function driveLongCapture(page, nested) {
+async function driveLongCapture(page, nested, captureJitter = 0) {
   console.log("FOXSHOT_E2E_START", nested ? "long-nested" : "long-root");
   await page.evaluate(() => {
     void window.__foxshotDispatch({ type: "foxshot.start", mode: "long" });
@@ -267,7 +293,7 @@ async function driveLongCapture(page, nested) {
       .find((node) => node.textContent === "完成");
     button?.click();
   });
-  await pumpCaptureUntilResult(page, nested ? "long-nested" : "long-root");
+  await pumpCaptureUntilResult(page, nested ? "long-nested" : "long-root", captureJitter);
   return range;
 }
 
@@ -367,6 +393,21 @@ async function runLongCase(browser, name, nested) {
   }
 }
 
+async function runJitterLongCase(browser, name, nested, captureJitter) {
+  const context = await browser.newContext({ viewport: { width: 480, height: 700 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  page.on("console", (message) => console.log("FOXSHOT_PAGE_CONSOLE", name, message.type(), message.text()));
+  page.on("pageerror", (error) => console.error("FOXSHOT_PAGE_ERROR", name, String(error?.stack || error)));
+  try {
+    await page.setContent(fixtureHtml({ nested }), { waitUntil: "load" });
+    await installFoxShotHarness(page);
+    const range = await driveLongCapture(page, nested, captureJitter);
+    await verifyResult(page, name, range.height, range.start);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runStickyLongCase(browser, name) {
   const context = await browser.newContext({ viewport: { width: 480, height: 700 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
@@ -390,6 +431,12 @@ async function main() {
     await runLongCase(browser, "long-root-scroll-snap", false);
     await runLongCase(browser, "long-nested-scroll-snap", true);
     await runStickyLongCase(browser, "long-sticky-seam");
+    // Simulate Firefox returning a bitmap 13 CSS px ahead of scrollTop while
+    // scrollTop itself is restored before the capture promise resolves. The
+    // old coordinate-only compositor produced the exact kind of chopped text
+    // seam seen in the user's terminal/log screenshots.
+    await runJitterLongCase(browser, "long-root-capture-jitter-13px", false, 13);
+    await runJitterLongCase(browser, "long-nested-capture-jitter-13px", true, 13);
     const builtPath = execFileSync("python3", ["tools/build.py"], { cwd: root, encoding: "utf8" }).trim();
     const xpiName = "FoxShot-1.1.0-long-capture-test.xpi";
     const xpiBuffer = fs.readFileSync(builtPath);
