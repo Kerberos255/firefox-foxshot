@@ -119,7 +119,7 @@ async function driveCapture(page, mode) {
     void window.__foxshotDispatch({ type: "foxshot.start", mode: requestedMode });
   }, mode);
 
-  const deadline = Date.now() + 45000;
+  const deadline = Date.now() + 150000;
   let frames = 0;
   while (Date.now() < deadline) {
     const request = await page.evaluate(() => window.__foxshotTakeCaptureRequest());
