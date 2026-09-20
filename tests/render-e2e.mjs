@@ -124,7 +124,9 @@ async function driveCapture(page, mode) {
   while (Date.now() < deadline) {
     const request = await page.evaluate(() => window.__foxshotTakeCaptureRequest());
     if (request) {
-      const png = await page.screenshot({ type: "png" });
+      console.log("FOXSHOT_E2E_FRAME_REQUEST", mode, request.id, frames);
+      const png = await page.screenshot({ type: "png", timeout: 10000 });
+      console.log("FOXSHOT_E2E_FRAME_READY", mode, request.id, png.length);
       const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
       await page.evaluate(({ id, dataUrl }) => window.__foxshotResolveCapture(id, dataUrl), { id: request.id, dataUrl });
       frames += 1;
@@ -144,6 +146,18 @@ async function driveCapture(page, mode) {
       return;
     }
     if (/失败/.test(state.hud)) throw new Error(state.hud);
+    if (frames === 0 && Date.now() + 1000 >= deadline) {
+      const debug = await page.evaluate(() => ({
+        loaded: Boolean(window.__foxshotLoaded),
+        hasDispatch: typeof window.__foxshotDispatch === "function",
+        hasTake: typeof window.__foxshotTakeCaptureRequest === "function",
+        bodyHeight: document.body?.scrollHeight || 0,
+        rootHeight: document.documentElement?.scrollHeight || 0,
+        hud: document.querySelector(".hud")?.textContent || "",
+        result: Boolean(document.querySelector(".result-preview"))
+      }));
+      console.log("FOXSHOT_E2E_TIMEOUT_DEBUG", mode, JSON.stringify(debug));
+    }
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   throw new Error(`${mode} capture timed out after ${frames} frames`);
@@ -190,6 +204,8 @@ async function verifyResult(page, name, expectedHeight) {
 async function runCase(browser, name, nested) {
   const context = await browser.newContext({ viewport: { width: 480, height: 700 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
+  page.on("console", (message) => console.log("FOXSHOT_PAGE_CONSOLE", name, message.type(), message.text()));
+  page.on("pageerror", (error) => console.error("FOXSHOT_PAGE_ERROR", name, String(error?.stack || error)));
   try {
     await page.setContent(fixtureHtml({ nested }), { waitUntil: "load" });
     await installFoxShotHarness(page);
