@@ -107,6 +107,17 @@
   function destroyUI() {
     releasePointer();
     unlockResultPageScroll();
+    if (longSession) {
+      const session = longSession;
+      stopLongAutoScroll();
+      try { session.scroller.eventTarget.removeEventListener("scroll", session.onScroll, true); } catch (_) {}
+      try { session.scroller.setTop(session.originTop); } catch (_) {}
+      if (session.scroller.root) {
+        try { window.scrollTo(session.originWindowX, session.originWindowY); } catch (_) {}
+      }
+      if (session.scrollControls) restoreCaptureScrollControls(session.scrollControls);
+      longSession = null;
+    }
     if (ui?.host?.isConnected) ui.host.remove();
     ui = null;
     interaction = null;
@@ -1552,10 +1563,14 @@
     if (!s) { destroyUI(); return; }
     stopLongAutoScroll();
     s.scroller.eventTarget.removeEventListener("scroll", s.onScroll, true);
-    await settleScroller(s.scroller, s.originTop).catch(() => {});
-    if (s.scroller.root) window.scrollTo(s.originWindowX, s.originWindowY);
-    longSession = null;
-    destroyUI();
+    try {
+      await settleScroller(s.scroller, s.originTop).catch(() => {});
+      if (s.scroller.root) window.scrollTo(s.originWindowX, s.originWindowY);
+    } finally {
+      if (s.scrollControls) restoreCaptureScrollControls(s.scrollControls);
+      longSession = null;
+      destroyUI();
+    }
   }
 
   async function completeLongRange() {
@@ -1584,6 +1599,7 @@
 
       await settleScroller(s.scroller, s.originTop).catch(() => {});
       if (s.scroller.root) window.scrollTo(s.originWindowX, s.originWindowY);
+      if (s.scrollControls) restoreCaptureScrollControls(s.scrollControls);
       longSession = null;
       showResultDataUrl(dataUrl, "长截图", "FoxShot-long", true);
     } catch (error) {
@@ -1627,6 +1643,8 @@
     const startScreenY = clamp(selection.y, rect.top, Math.max(rect.top, rect.bottom - MIN_SELECTION));
     const endScreenY = clamp(selection.y + selection.h, startScreenY + MIN_SELECTION, rect.bottom);
     const originTop = scroller.getTop();
+    const scrollControls = rememberCaptureScrollControls(scroller);
+    applyCaptureScrollControls(scrollControls);
     const startContentY = clamp(originTop + (startScreenY - rect.top), 0, scroller.getTotalHeight());
     const endContentY = clamp(originTop + (endScreenY - rect.top), startContentY + MIN_SELECTION, scroller.getTotalHeight());
 
@@ -1644,6 +1662,7 @@
       originTop,
       originWindowX: scrollX,
       originWindowY: scrollY,
+      scrollControls,
       originBadge,
       status: null,
       extending: false,
@@ -1682,8 +1701,9 @@
       const previous = longSession;
       stopLongAutoScroll();
       previous.scroller.eventTarget.removeEventListener("scroll", previous.onScroll, true);
-      settleScroller(previous.scroller, previous.originTop).catch(() => {});
+      previous.scroller.setTop(previous.originTop);
       if (previous.scroller.root) window.scrollTo(previous.originWindowX, previous.originWindowY);
+      if (previous.scrollControls) restoreCaptureScrollControls(previous.scrollControls);
       longSession = null;
     }
     selection = null; shapes = []; redoShapes = []; interaction = null;
