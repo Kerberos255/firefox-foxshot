@@ -134,8 +134,8 @@ async function driveCapture(page, mode) {
     }
 
     const state = await page.evaluate(() => {
-      const image = document.querySelector(".result-preview");
-      const hud = document.querySelector(".hud");
+      const image = document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".result-preview");
+      const hud = document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".hud");
       const scrolling = document.scrollingElement || document.documentElement;
       return {
         done: Boolean(image?.complete && image.naturalWidth && image.naturalHeight),
@@ -143,7 +143,7 @@ async function driveCapture(page, mode) {
         scrollTop: window.scrollY,
         scrollHeight: Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0),
         viewport: innerHeight,
-        result: Boolean(document.querySelector(".result")),
+        result: Boolean(document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".result")),
         errorText: document.body?.innerText?.match(/整页截图失败[^\n]*/)?.[0] || ""
       };
     });
@@ -162,8 +162,8 @@ async function driveCapture(page, mode) {
         hasTake: typeof window.__foxshotTakeCaptureRequest === "function",
         bodyHeight: document.body?.scrollHeight || 0,
         rootHeight: document.documentElement?.scrollHeight || 0,
-        hud: document.querySelector(".hud")?.textContent || "",
-        result: Boolean(document.querySelector(".result-preview"))
+        hud: document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".hud")?.textContent || "",
+        result: Boolean(document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".result-preview"))
       }));
       console.log("FOXSHOT_E2E_TIMEOUT_DEBUG", mode, JSON.stringify(debug));
     }
@@ -174,12 +174,12 @@ async function driveCapture(page, mode) {
 
 async function verifyResult(page, name, expectedHeight) {
   await page.waitForFunction(() => {
-    const image = document.querySelector(".result-preview");
+    const image = document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".result-preview");
     return Boolean(image?.complete && image.naturalWidth && image.naturalHeight);
   }, { timeout: 30000 });
 
   const result = await page.evaluate(({ expectedHeight }) => {
-    const image = document.querySelector(".result-preview");
+    const image = document.querySelector("[data-foxshot-ui]")?.shadowRoot?.querySelector(".result-preview");
     const canvas = document.createElement("canvas");
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
