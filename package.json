@@ -4,6 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/smoke.mjs",
+    "test:render-e2e": "node tests/render-e2e.mjs"
   }
 }
