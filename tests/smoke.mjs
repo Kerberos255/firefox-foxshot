@@ -55,6 +55,12 @@ const captureSource = fs.readFileSync(path.join(root, "content/capture.js"), "ut
 assert.match(captureSource, /setPointerCapture/, "selection interactions should use pointer capture");
 assert.match(captureSource, /ui\.shadow\.addEventListener\("pointerup"/, "pointerup should be handled at the shadow-root level");
 assert.match(captureSource, /settleScroller/, "capture should use stable scroll settling");
+assert.match(captureSource, /scroll-snap-type/, "capture should disable scroll snap while stitching");
+assert.match(captureSource, /overflow-anchor/, "capture should disable scroll anchoring while stitching");
+assert.match(captureSource, /seekScrollerWithoutGap/, "capture should reject forward scroll overshoot gaps");
+assert.match(captureSource, /scrollControls,\s*originBadge/, "long capture should retain temporary scroll controls for cleanup");
+assert.match(captureSource, /applyCaptureScrollControls\(scrollControls\)/, "long selection should neutralize page scroll snapping");
+assert.match(captureSource, /coveredUntil/, "stitching should advance from actual captured coverage");
 assert.match(captureSource, /findScrollerAt/, "capture should detect nested scroll containers");
 assert.match(captureSource, /RED_FORBIDDEN_CURSOR/, "selection UI should provide a visible forbidden cursor outside the selection");
 assert.match(captureSource, /pixelateStroke/, "mosaic should be implemented as a brush stroke");

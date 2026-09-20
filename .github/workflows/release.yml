@@ -1,0 +1,51 @@
+name: Release FoxShot
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - manifest.json
+      - .github/workflows/release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: startsWith(github.event.head_commit.message, 'release: FoxShot ')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(python3 -c 'import json; print(json.load(open("manifest.json", encoding="utf-8"))["version"])')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Run smoke tests
+        run: npm test
+
+      - name: Build XPI
+        id: build
+        shell: bash
+        run: |
+          XPI="$(python3 tools/build.py)"
+          python3 -m zipfile -t "$XPI"
+          echo "xpi=$XPI" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          XPI: ${{ steps.build.outputs.xpi }}
+        shell: bash
+        run: |
+          NOTES=$'FoxShot 1.2 improves long/full-page screenshot reliability in Firefox.\n\n- Pixel-based visual seam alignment for adjacent capture frames.\n- Fixes intermittent missing/duplicated rows when the captured bitmap drifts from scroll coordinates.\n- Better handling for scroll-snap, smooth scrolling, sticky elements, and nested scroll containers.\n- Regression-tested against deliberate 13 px capture drift.'
+          gh release create "v$VERSION" "$XPI" \
+            --target "$GITHUB_SHA" \
+            --title "FoxShot $VERSION" \
+            --notes "$NOTES"

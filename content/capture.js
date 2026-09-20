@@ -107,6 +107,17 @@
   function destroyUI() {
     releasePointer();
     unlockResultPageScroll();
+    if (longSession) {
+      const session = longSession;
+      stopLongAutoScroll();
+      try { session.scroller.eventTarget.removeEventListener("scroll", session.onScroll, true); } catch (_) {}
+      try { session.scroller.setTop(session.originTop); } catch (_) {}
+      if (session.scroller.root) {
+        try { window.scrollTo(session.originWindowX, session.originWindowY); } catch (_) {}
+      }
+      if (session.scrollControls) restoreCaptureScrollControls(session.scrollControls);
+      longSession = null;
+    }
     if (ui?.host?.isConnected) ui.host.remove();
     ui = null;
     interaction = null;
@@ -1068,15 +1079,75 @@
     };
   }
 
+  function rememberCaptureScrollControls(scroller) {
+    const elements = [scroller.element];
+    if (scroller.root && document.body && document.body !== scroller.element) elements.push(document.body);
+    const properties = ["scroll-behavior", "scroll-snap-type", "overflow-anchor"];
+    return elements.map((element) => ({
+      element,
+      saved: Object.fromEntries(properties.map((name) => [name, rememberInlineProperty(element, name)]))
+    }));
+  }
+
+  function applyCaptureScrollControls(savedControls) {
+    for (const entry of savedControls) {
+      entry.element.style.setProperty("scroll-behavior", "auto", "important");
+      entry.element.style.setProperty("scroll-snap-type", "none", "important");
+      entry.element.style.setProperty("overflow-anchor", "none", "important");
+    }
+  }
+
+  function restoreCaptureScrollControls(savedControls) {
+    for (const entry of savedControls) {
+      for (const [name, saved] of Object.entries(entry.saved)) {
+        restoreInlineProperty(entry.element, name, saved);
+      }
+    }
+  }
+
   async function settleScroller(scroller, top) {
-    const element = scroller.element;
-    const oldBehavior = element.style.scrollBehavior;
-    element.style.scrollBehavior = "auto";
     scroller.setTop(top);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await sleep(180);
-    element.style.scrollBehavior = oldBehavior;
+    // Give lazy rendering and browser scroll correction a short window, then
+    // require both scroll position and scroll height to stop moving.
+    await sleep(90);
+    let lastTop = scroller.getTop();
+    let lastHeight = scroller.getTotalHeight();
+    let stableSamples = 0;
+    for (let sample = 0; sample < 6; sample += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await sleep(24);
+      const currentTop = scroller.getTop();
+      const currentHeight = scroller.getTotalHeight();
+      if (Math.abs(currentTop - lastTop) <= 0.25 && Math.abs(currentHeight - lastHeight) <= 0.5) {
+        stableSamples += 1;
+        if (stableSamples >= 2) return currentTop;
+      } else {
+        stableSamples = 0;
+      }
+      lastTop = currentTop;
+      lastHeight = currentHeight;
+    }
     return scroller.getTop();
+  }
+
+  async function seekScrollerWithoutGap(scroller, cursor, overlap) {
+    let targetTop = Math.max(0, cursor - overlap);
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const totalHeight = scroller.getTotalHeight();
+      const maxScroll = Math.max(0, totalHeight - scroller.getViewportHeight());
+      targetTop = Math.min(targetTop, maxScroll);
+      const actualTop = await settleScroller(scroller, targetTop);
+      if (actualTop <= cursor + 0.5) return actualTop;
+
+      // The browser moved farther down than requested (for example because of
+      // scroll-snap or a layout shift). Move the next request back by the exact
+      // overshoot. Never accept a frame whose viewport begins after the first
+      // uncaptured content coordinate, because that would create a silent gap.
+      const overshoot = actualTop - cursor;
+      targetTop = Math.max(0, targetTop - overshoot - overlap - 1);
+    }
+    throw new Error("页面滚动位置持续跳跃，为避免漏截已停止；请稍后重试");
   }
 
   function stickyIsPinned(style, rect) {
@@ -1119,14 +1190,30 @@
   }
 
   function hideVisibleFloatingElements(saved) {
-    // Hiding one floating layer can expose another one beneath it. Repeat a
-    // few passes so stacked sticky/fixed bars do not leak into stitched frames.
+    // Fixed overlays can be hidden safely because they do not participate in
+    // document flow. A pinned sticky element is different: visibility:hidden
+    // preserves its in-flow box, and when a capture seam lands while it is
+    // entering the sticky state that preserved box becomes a blank horizontal
+    // stripe in the stitched image. Neutralize sticky positioning instead so
+    // the element stays in normal document flow and is captured exactly once.
     for (let pass = 0; pass < 4; pass += 1) {
       let changed = false;
       for (const element of visibleFloatingElements()) {
         if (saved.has(element)) continue;
-        saved.set(element, rememberInlineProperty(element, "visibility"));
-        element.style.setProperty("visibility", "hidden", "important");
+        const style = getComputedStyle(element);
+        if (style.position === "sticky") {
+          saved.set(element, {
+            kind: "sticky",
+            position: rememberInlineProperty(element, "position")
+          });
+          element.style.setProperty("position", "relative", "important");
+        } else {
+          saved.set(element, {
+            kind: "hidden",
+            visibility: rememberInlineProperty(element, "visibility")
+          });
+          element.style.setProperty("visibility", "hidden", "important");
+        }
         changed = true;
       }
       if (!changed) break;
@@ -1134,8 +1221,14 @@
   }
 
   function restoreFloatingElements(saved) {
-    for (const [element, oldVisibility] of saved.entries()) {
-      restoreInlineProperty(element, "visibility", oldVisibility);
+    for (const [element, state] of saved.entries()) {
+      if (state?.kind === "sticky") {
+        restoreInlineProperty(element, "position", state.position);
+      } else {
+        // Accept the old map shape as well so cleanup remains safe if capture
+        // is interrupted while code is being hot-reloaded during development.
+        restoreInlineProperty(element, "visibility", state?.visibility ?? state);
+      }
     }
   }
 
@@ -1170,9 +1263,133 @@
     return rect.height > innerHeight + 4;
   }
 
+  function framePixelDiffScore(prevPixels, prevWidth, prevHeight, currPixels, currWidth, currHeight, overlap, matchHeight) {
+    const h = Math.max(1, Math.min(matchHeight, overlap, currHeight, prevHeight));
+    const prevStartY = prevHeight - overlap;
+    if (prevStartY < 0 || prevStartY + h > prevHeight) return Infinity;
+
+    // Sample enough pixels to lock onto text/edges while keeping long captures
+    // cheap. Ignore nearly-flat samples because dark/white backgrounds make
+    // many vertical offsets look equally good.
+    const stepX = Math.max(2, Math.floor(Math.min(prevWidth, currWidth) / 120));
+    const stepY = 2;
+    const width = Math.min(prevWidth, currWidth);
+    let weightedError = 0;
+    let weightTotal = 0;
+
+    for (let y = 0; y < h; y += stepY) {
+      const py = prevStartY + y;
+      const cy = y;
+      for (let x = 0; x < width; x += stepX) {
+        const pp = (py * prevWidth + x) * 4;
+        const cp = (cy * currWidth + x) * 4;
+        const pLum = (prevPixels[pp] * 3 + prevPixels[pp + 1] * 6 + prevPixels[pp + 2]) / 10;
+        const cLum = (currPixels[cp] * 3 + currPixels[cp + 1] * 6 + currPixels[cp + 2]) / 10;
+
+        // Give edges/text more influence than empty background.
+        let edge = 0;
+        if (x + stepX < width) {
+          const pn = (py * prevWidth + Math.min(width - 1, x + stepX)) * 4;
+          const cn = (cy * currWidth + Math.min(width - 1, x + stepX)) * 4;
+          const pNext = (prevPixels[pn] * 3 + prevPixels[pn + 1] * 6 + prevPixels[pn + 2]) / 10;
+          const cNext = (currPixels[cn] * 3 + currPixels[cn + 1] * 6 + currPixels[cn + 2]) / 10;
+          edge = Math.max(Math.abs(pNext - pLum), Math.abs(cNext - cLum));
+        }
+        const weight = edge >= 8 ? 3 : edge >= 3 ? 1.5 : 0.2;
+        weightedError += Math.abs(pLum - cLum) * weight;
+        weightTotal += weight;
+      }
+    }
+    return weightTotal > 0 ? weightedError / weightTotal : Infinity;
+  }
+
+  async function calibrateFramePlacements(frames, scale) {
+    if (frames.length < 2) return frames;
+
+    const decoded = [];
+    for (const frame of frames) {
+      const image = await loadImage(frame.dataUrl);
+      const w = Math.max(1, Math.round(frame.cropWidth * scale));
+      const h = Math.max(1, Math.round(frame.cropHeight * scale));
+      const canvas = createCanvas(w, h);
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        image,
+        frame.cropX * scale,
+        frame.cropY * scale,
+        frame.cropWidth * scale,
+        frame.cropHeight * scale,
+        0,
+        0,
+        w,
+        h
+      );
+      decoded.push({
+        width: w,
+        height: h,
+        pixels: ctx.getImageData(0, 0, w, h).data
+      });
+    }
+
+    const corrected = frames.map((frame) => ({ ...frame }));
+    for (let index = 1; index < corrected.length; index += 1) {
+      const prevFrame = corrected[index - 1];
+      const currFrame = corrected[index];
+      const prev = decoded[index - 1];
+      const curr = decoded[index];
+
+      const predictedOverlapCss =
+        (prevFrame.outY + prevFrame.cropHeight) - currFrame.outY;
+      const predictedOverlap = Math.max(1, Math.round(predictedOverlapCss * scale));
+      const radius = Math.max(24, Math.round(72 * scale));
+      const minOverlap = Math.max(12, predictedOverlap - radius);
+      const maxOverlap = Math.min(
+        prev.height - 1,
+        curr.height - 1,
+        predictedOverlap + radius
+      );
+      if (maxOverlap <= minOverlap) continue;
+
+      let best = null;
+      let second = null;
+      for (let overlap = minOverlap; overlap <= maxOverlap; overlap += 1) {
+        const matchHeight = Math.min(Math.round(84 * scale), overlap, curr.height);
+        const score = framePixelDiffScore(
+          prev.pixels, prev.width, prev.height,
+          curr.pixels, curr.width, curr.height,
+          overlap, matchHeight
+        );
+        const candidate = { overlap, score };
+        if (!best || score < best.score) {
+          second = best;
+          best = candidate;
+        } else if (!second || score < second.score) {
+          second = candidate;
+        }
+      }
+
+      // Exact/static captures score near zero. Dynamic pages may be noisier, so
+      // accept a visual correction when it is either very close or clearly
+      // better than the alternatives. Clamp the correction to the search
+      // radius so a repetitive background cannot create a wild jump.
+      if (!best || !Number.isFinite(best.score)) continue;
+      const separation = second ? second.score - best.score : Infinity;
+      const trustworthy = best.score <= 3.5 || separation >= Math.max(0.35, best.score * 0.08);
+      if (!trustworthy) continue;
+
+      const bestOverlapCss = best.overlap / scale;
+      const correctedOutY = prevFrame.outY + prevFrame.cropHeight - bestOverlapCss;
+      const delta = correctedOutY - currFrame.outY;
+      const maxDelta = radius / scale;
+      if (Math.abs(delta) <= maxDelta + 0.5) currFrame.outY = correctedOutY;
+    }
+    return corrected;
+  }
+
   async function captureScrollerRange(scroller, options) {
     const start = Math.max(0, Number(options.start) || 0);
-    let end = Math.max(start + 1, Number(options.end) || start + 1);
+    const requestedEnd = Math.max(start + 1, Number(options.end) || start + 1);
     const screenX = Math.max(0, Number(options.screenX) || 0);
     const width = Math.max(1, Number(options.width) || 1);
     const status = options.status || null;
@@ -1182,29 +1399,48 @@
     let scale = null;
     let iterations = 0;
     const floatingEntries = new Map();
+    const scrollControls = rememberCaptureScrollControls(scroller);
+    // A generous overlap lets the compositor visually register adjacent
+    // frames when Firefox's captured bitmap lags/leads scrollTop by a few
+    // pixels (seen on long terminal/log pages and virtualized content).
+    const overlap = Math.max(72, Math.min(128, Math.round(scroller.getViewportHeight() * 0.16)));
 
+    applyCaptureScrollControls(scrollControls);
     try {
-      while (cursor < end - 0.5) {
-        if (++iterations > 160) throw new Error("截图段数过多，请缩短范围后重试");
+      while (cursor < requestedEnd - 0.5) {
+        if (++iterations > 220) throw new Error("截图段数过多，请缩短范围后重试");
         const totalHeight = scroller.getTotalHeight();
-        end = Math.min(end, totalHeight);
-        const viewportHeight = scroller.getViewportHeight();
-        const maxScroll = Math.max(0, totalHeight - viewportHeight);
-        const targetTop = Math.min(cursor, maxScroll);
-        const actualTop = await settleScroller(scroller, targetTop);
+        const end = Math.min(requestedEnd, totalHeight);
+        if (cursor >= end - 0.5) break;
+
+        const actualTop = await seekScrollerWithoutGap(scroller, cursor, overlap);
         const viewportRect = scroller.getRect();
-        const contentOffset = Math.max(0, cursor - actualTop);
+        const desiredStart = Math.max(start, cursor - overlap);
+        const contentStart = Math.max(desiredStart, actualTop);
+        if (contentStart > cursor + 0.5) {
+          throw new Error("滚动定位跳过了尚未捕获的内容，为避免漏截已停止");
+        }
+
+        const contentOffset = Math.max(0, contentStart - actualTop);
         const visibleAvailable = Math.max(0, viewportRect.h - contentOffset);
-        const cssHeight = Math.min(visibleAvailable, end - cursor);
+        const cssHeight = Math.min(visibleAvailable, end - contentStart);
         if (cssHeight <= 0.5) throw new Error("滚动区域无法继续捕获");
 
         if (status) {
-          const pct = Math.min(100, Math.round(((cursor - start + cssHeight) / Math.max(1, end - start)) * 100));
+          const pct = Math.min(100, Math.round(((cursor - start + cssHeight) / Math.max(1, requestedEnd - start)) * 100));
           status.textContent = `正在生成截图… ${pct}%`;
         }
 
         if (hideFloating) hideVisibleFloatingElements(floatingEntries);
+        const topBeforeCapture = scroller.getTop();
         const dataUrl = await captureVisibleWithoutUI(1);
+        const topAfterCapture = scroller.getTop();
+
+        // A script-driven jump or late layout shift during capture can move the
+        // viewport after we calculated the crop. Retry the same uncovered
+        // coordinate instead of composing a misaligned frame.
+        if (Math.abs(topAfterCapture - topBeforeCapture) > 0.75) continue;
+
         const image = await loadImage(dataUrl);
         if (scale == null) scale = image.width / innerWidth;
         const cropX = clamp(screenX, 0, Math.max(0, innerWidth - 1));
@@ -1213,26 +1449,34 @@
         const cropHeight = Math.min(cssHeight, innerHeight - cropY);
         if (cropWidth <= 0 || cropHeight <= 0) throw new Error("选区超出可捕获区域");
 
-        // Store the original screenshot plus crop metadata. We deliberately do
-        // NOT create per-segment canvases and then draw canvas->canvas: Firefox
-        // can incorrectly taint that second canvas in a WebExtension content
-        // script. Final composition draws every screenshot image directly.
         frames.push({
           dataUrl,
           cropX,
           cropY,
           cropWidth,
           cropHeight,
-          outY: cursor - start
+          outY: contentStart - start
         });
 
-        cursor += cropHeight;
+        const coveredUntil = contentStart + cropHeight;
+        if (coveredUntil <= cursor + 0.5) throw new Error("滚动区域没有产生新的可捕获内容");
+        cursor = coveredUntil;
       }
 
       if (!frames.length || scale == null) throw new Error("没有捕获到图像");
+      const targetHeight = Math.min(requestedEnd, scroller.getTotalHeight()) - start;
       const usedHeight = Math.max(...frames.map((frame) => frame.outY + frame.cropHeight));
-      const outputWidth = Math.max(1, Math.round(frames[0].cropWidth * scale));
-      const outputHeight = Math.max(1, Math.round(usedHeight * scale));
+      if (usedHeight + 0.75 < targetHeight) {
+        throw new Error("截图覆盖范围不完整，为避免生成缺内容的长图已停止");
+      }
+
+      const placedFrames = await calibrateFramePlacements(frames, scale);
+      const calibratedUsedHeight = Math.max(...placedFrames.map((frame) => frame.outY + frame.cropHeight));
+      const outputWidth = Math.max(1, Math.round(placedFrames[0].cropWidth * scale));
+      // Visual registration may move a frame a few pixels, but the user's
+      // requested range is authoritative. Keep the final bitmap exactly that
+      // tall and let the canvas clip any calibration guard pixels.
+      const outputHeight = Math.max(1, Math.round(targetHeight * scale));
       if (outputHeight > MAX_OUTPUT_HEIGHT || outputWidth > 32000) {
         throw new Error("截图超过单张图片安全尺寸，请缩短范围后重试");
       }
@@ -1240,7 +1484,7 @@
       const out = createCanvas(outputWidth, outputHeight);
       const ctx = out.getContext("2d");
       ctx.imageSmoothingEnabled = false;
-      for (const frame of frames) {
+      for (const frame of placedFrames) {
         const image = await loadImage(frame.dataUrl);
         ctx.drawImage(
           image,
@@ -1249,14 +1493,15 @@
           frame.cropWidth * scale,
           frame.cropHeight * scale,
           0,
-          frame.outY * scale,
-          frame.cropWidth * scale,
-          frame.cropHeight * scale
+          Math.round(frame.outY * scale),
+          Math.round(frame.cropWidth * scale),
+          Math.round(frame.cropHeight * scale)
         );
       }
       return out.toDataURL("image/png");
     } finally {
       restoreFloatingElements(floatingEntries);
+      restoreCaptureScrollControls(scrollControls);
     }
   }
 
@@ -1472,10 +1717,14 @@
     if (!s) { destroyUI(); return; }
     stopLongAutoScroll();
     s.scroller.eventTarget.removeEventListener("scroll", s.onScroll, true);
-    await settleScroller(s.scroller, s.originTop).catch(() => {});
-    if (s.scroller.root) window.scrollTo(s.originWindowX, s.originWindowY);
-    longSession = null;
-    destroyUI();
+    try {
+      await settleScroller(s.scroller, s.originTop).catch(() => {});
+      if (s.scroller.root) window.scrollTo(s.originWindowX, s.originWindowY);
+    } finally {
+      if (s.scrollControls) restoreCaptureScrollControls(s.scrollControls);
+      longSession = null;
+      destroyUI();
+    }
   }
 
   async function completeLongRange() {
@@ -1504,6 +1753,7 @@
 
       await settleScroller(s.scroller, s.originTop).catch(() => {});
       if (s.scroller.root) window.scrollTo(s.originWindowX, s.originWindowY);
+      if (s.scrollControls) restoreCaptureScrollControls(s.scrollControls);
       longSession = null;
       showResultDataUrl(dataUrl, "长截图", "FoxShot-long", true);
     } catch (error) {
@@ -1547,6 +1797,8 @@
     const startScreenY = clamp(selection.y, rect.top, Math.max(rect.top, rect.bottom - MIN_SELECTION));
     const endScreenY = clamp(selection.y + selection.h, startScreenY + MIN_SELECTION, rect.bottom);
     const originTop = scroller.getTop();
+    const scrollControls = rememberCaptureScrollControls(scroller);
+    applyCaptureScrollControls(scrollControls);
     const startContentY = clamp(originTop + (startScreenY - rect.top), 0, scroller.getTotalHeight());
     const endContentY = clamp(originTop + (endScreenY - rect.top), startContentY + MIN_SELECTION, scroller.getTotalHeight());
 
@@ -1564,6 +1816,7 @@
       originTop,
       originWindowX: scrollX,
       originWindowY: scrollY,
+      scrollControls,
       originBadge,
       status: null,
       extending: false,
@@ -1602,8 +1855,9 @@
       const previous = longSession;
       stopLongAutoScroll();
       previous.scroller.eventTarget.removeEventListener("scroll", previous.onScroll, true);
-      settleScroller(previous.scroller, previous.originTop).catch(() => {});
+      previous.scroller.setTop(previous.originTop);
       if (previous.scroller.root) window.scrollTo(previous.originWindowX, previous.originWindowY);
+      if (previous.scrollControls) restoreCaptureScrollControls(previous.scrollControls);
       longSession = null;
     }
     selection = null; shapes = []; redoShapes = []; interaction = null;
