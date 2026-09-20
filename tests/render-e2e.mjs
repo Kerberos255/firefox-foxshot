@@ -438,16 +438,10 @@ async function main() {
     await runJitterLongCase(browser, "long-root-capture-jitter-13px", false, 13);
     await runJitterLongCase(browser, "long-nested-capture-jitter-13px", true, 13);
     const builtPath = execFileSync("python3", ["tools/build.py"], { cwd: root, encoding: "utf8" }).trim();
-    const xpiName = "FoxShot-1.1.0-long-capture-test.xpi";
+    const xpiName = path.basename(builtPath);
     const xpiBuffer = fs.readFileSync(builtPath);
     artifacts.set(xpiName, xpiBuffer);
     report.artifacts.push({ name: xpiName, path: `/artifacts/${xpiName}` });
-    const xpiB64 = xpiBuffer.toString("base64");
-    const xpiChunkSize = 6000;
-    const xpiTotal = Math.ceil(xpiB64.length / xpiChunkSize);
-    for (let index = 0; index < xpiTotal; index += 1) {
-      console.log("FOXSHOT_XPI_CHUNK", index + 1, xpiTotal, xpiB64.slice(index * xpiChunkSize, (index + 1) * xpiChunkSize));
-    }
     report.status = "PASS";
   } catch (error) {
     report.status = "FAIL";
