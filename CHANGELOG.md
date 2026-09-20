@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2
+
+- Fix intermittent horizontal seams, missing text rows, and duplicated content in long and full-page screenshots by visually registering overlapping Firefox capture frames instead of trusting scroll coordinates alone.
+- Increase capture overlap and calibrate adjacent frames against actual image pixels, including cases where the captured bitmap drifts from the reported scroll position.
+- Improve long-capture reliability on pages using `scroll-snap`, smooth scrolling, sticky headers, and nested scroll containers, restoring the page's original scroll behavior afterward.
+- Avoid blank bands caused by pinned `position: sticky` elements during stitched captures.
+- Add real-Firefox regression coverage for root/nested scrolling, sticky seams, scroll snap, and deliberate 13 px capture drift.
+
 ## 1.1
 
 - Lock the underlying page while full-page and scrolling screenshot previews are open so only the FoxShot preview scrollbar remains.
