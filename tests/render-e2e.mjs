@@ -75,6 +75,44 @@ function fixtureHtml({ nested = false }) {
   </script>`;
 }
 
+function stickySeamFixtureHtml() {
+  const totalHeight = 2300;
+  const stickyTop = 816;
+  const stickyHeight = 20;
+  return `<!doctype html>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing:border-box; }
+    html, body { margin:0; padding:0; background:#000; }
+    canvas { display:block; width:480px; }
+    #sticky-oracle { position:sticky; top:0; z-index:10; width:480px; height:${stickyHeight}px; }
+  </style>
+  <canvas id="before" width="480" height="${stickyTop}"></canvas>
+  <canvas id="sticky-oracle" width="480" height="${stickyHeight}"></canvas>
+  <canvas id="after" width="480" height="${totalHeight - stickyTop - stickyHeight}"></canvas>
+  <script>
+    for (const canvas of document.querySelectorAll("canvas")) {
+      const start = canvas.offsetTop;
+      const ctx = canvas.getContext("2d", { alpha:false });
+      const image = ctx.createImageData(canvas.width, canvas.height);
+      for (let y = 0; y < canvas.height; y += 1) {
+        const globalY = start + y;
+        const r = globalY & 255;
+        const g = (globalY >> 8) & 255;
+        for (let x = 0; x < canvas.width; x += 1) {
+          const p = (y * canvas.width + x) * 4;
+          image.data[p] = r;
+          image.data[p + 1] = g;
+          image.data[p + 2] = 97;
+          image.data[p + 3] = 255;
+        }
+      }
+      ctx.putImageData(image, 0, 0);
+    }
+    window.__fixture = { totalHeight, nested:false, stickyTop:${stickyTop}, stickyHeight:${stickyHeight} };
+  </script>`;
+}
+
 async function installFoxShotHarness(page) {
   await page.evaluate(() => {
     const listeners = [];
@@ -329,6 +367,21 @@ async function runLongCase(browser, name, nested) {
   }
 }
 
+async function runStickyLongCase(browser, name) {
+  const context = await browser.newContext({ viewport: { width: 480, height: 700 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  page.on("console", (message) => console.log("FOXSHOT_PAGE_CONSOLE", name, message.type(), message.text()));
+  page.on("pageerror", (error) => console.error("FOXSHOT_PAGE_ERROR", name, String(error?.stack || error)));
+  try {
+    await page.setContent(stickySeamFixtureHtml(), { waitUntil: "load" });
+    await installFoxShotHarness(page);
+    const range = await driveLongCapture(page, false);
+    await verifyResult(page, name, range.height, range.start);
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   const browser = await firefox.launch({ headless: true });
   try {
@@ -336,6 +389,7 @@ async function main() {
     await runCase(browser, "nested-scroll-snap", true);
     await runLongCase(browser, "long-root-scroll-snap", false);
     await runLongCase(browser, "long-nested-scroll-snap", true);
+    await runStickyLongCase(browser, "long-sticky-seam");
     const builtPath = execFileSync("python3", ["tools/build.py"], { cwd: root, encoding: "utf8" }).trim();
     const xpiName = "FoxShot-1.1.0-long-capture-test.xpi";
     const xpiBuffer = fs.readFileSync(builtPath);
