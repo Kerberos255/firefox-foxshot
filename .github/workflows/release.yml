@@ -6,6 +6,7 @@ name: Release FoxShot
       - main
     paths:
       - manifest.json
+      - tests/smoke.mjs
       - .github/workflows/release.yml
 
 permissions:
