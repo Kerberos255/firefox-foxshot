@@ -94,5 +94,212 @@
   },
   "hideFloatingElementsHint": {
     "message": "默认开启。可避免固定搜索栏、悬浮导航、回到顶部按钮等在拼接结果中重复出现或遮住真正内容。"
+  },
+  "capMoveSelection": {
+    "message": "移动选区"
+  },
+  "capRectangle": {
+    "message": "矩形"
+  },
+  "capEllipse": {
+    "message": "椭圆"
+  },
+  "capArrow": {
+    "message": "箭头"
+  },
+  "capPen": {
+    "message": "画笔"
+  },
+  "capText": {
+    "message": "文字"
+  },
+  "capMosaic": {
+    "message": "马赛克"
+  },
+  "capColor": {
+    "message": "颜色"
+  },
+  "capUndo": {
+    "message": "撤销"
+  },
+  "capRedo": {
+    "message": "重做"
+  },
+  "capCopy": {
+    "message": "复制"
+  },
+  "capCopyToClipboard": {
+    "message": "复制到剪贴板"
+  },
+  "capSave": {
+    "message": "保存"
+  },
+  "capSavePng": {
+    "message": "保存 PNG"
+  },
+  "capCancel": {
+    "message": "取消"
+  },
+  "capSelectRegionHint": {
+    "message": "拖动鼠标框选区域；松开后可调整大小并标注"
+  },
+  "capEnterText": {
+    "message": "输入文字："
+  },
+  "capAnnotationsAdded": {
+    "message": "已添加标注；复制/保存会包含标注"
+  },
+  "capAnnotationsCleared": {
+    "message": "标注已清空"
+  },
+  "capBrowseScroll": {
+    "message": "浏览/滚动"
+  },
+  "capCopyingClipboard": {
+    "message": "正在复制到剪贴板…"
+  },
+  "capOriginalSize": {
+    "message": "按图片原始尺寸显示"
+  },
+  "capFitWidth": {
+    "message": "适应宽度"
+  },
+  "capFitPreviewWidth": {
+    "message": "缩放到适应预览宽度"
+  },
+  "capRenderCopy": {
+    "message": "正在合成标注并复制…"
+  },
+  "capCopying": {
+    "message": "正在复制…"
+  },
+  "capCopied": {
+    "message": "✓ 已复制到剪贴板"
+  },
+  "capCopyFailed": {
+    "message": "复制失败，可点击重试"
+  },
+  "capRenderingAnnotations": {
+    "message": "正在合成标注…"
+  },
+  "capOpeningSaveDialog": {
+    "message": "正在打开保存对话框…"
+  },
+  "capSaveSent": {
+    "message": "✓ 已交给 Firefox 保存"
+  },
+  "capSaveFailed": {
+    "message": "保存失败"
+  },
+  "capClose": {
+    "message": "关闭"
+  },
+  "capAutoCopyFailed": {
+    "message": "自动复制失败，可点击重试"
+  },
+  "capScrollJumpError": {
+    "message": "页面滚动位置持续跳跃，为避免漏截已停止；请稍后重试"
+  },
+  "capTooManyFrames": {
+    "message": "截图段数过多，请缩短范围后重试"
+  },
+  "capScrollGapError": {
+    "message": "滚动定位跳过了尚未捕获的内容，为避免漏截已停止"
+  },
+  "capNoVisibleArea": {
+    "message": "滚动区域无法继续捕获"
+  },
+  "capInvalidCaptureArea": {
+    "message": "选区超出可捕获区域"
+  },
+  "capNoNewContent": {
+    "message": "滚动区域没有产生新的可捕获内容"
+  },
+  "capNoCapture": {
+    "message": "没有捕获到图像"
+  },
+  "capIncompleteCoverage": {
+    "message": "截图覆盖范围不完整，为避免生成缺内容的长图已停止"
+  },
+  "capOutputTooLarge": {
+    "message": "截图超过单张图片安全尺寸，请缩短范围后重试"
+  },
+  "capAnalyzing": {
+    "message": "正在分析页面…"
+  },
+  "capPageTooTall": {
+    "message": "页面超过单张图片安全高度，请使用长截图选择需要的部分"
+  },
+  "capCapturingFull": {
+    "message": "正在按固定步长捕获整页…"
+  },
+  "capCapturingCurrent": {
+    "message": "正在捕获当前页面…"
+  },
+  "capFullCopied": {
+    "message": "整页截图完成，正在复制…"
+  },
+  "capFullShotTitle": {
+    "message": "整页截图"
+  },
+  "capScrollerTooTall": {
+    "message": "滚动区域超过单张图片安全高度，请使用长截图选择需要的部分"
+  },
+  "capCapturingInner": {
+    "message": "检测到页面内部滚动区域，正在按固定步长捕获…"
+  },
+  "capCancelling": {
+    "message": "正在取消截图…"
+  },
+  "capSelectionTooTall": {
+    "message": "选择范围超过单张长图安全高度，请缩短范围"
+  },
+  "capCapturingLong": {
+    "message": "正在按选定范围生成长图…"
+  },
+  "capLongShotTitle": {
+    "message": "长截图"
+  },
+  "capExtendHint": {
+    "message": "拖住下边缘向下延伸；接近底部会自动滚动"
+  },
+  "capFinish": {
+    "message": "完成"
+  },
+  "capCaptureRange": {
+    "message": "按当前范围生成长截图"
+  },
+  "capReselect": {
+    "message": "重选"
+  },
+  "capReselectHint": {
+    "message": "重新选择长截图范围"
+  },
+  "capCancelLong": {
+    "message": "取消长截图"
+  },
+  "capOriginLocked": {
+    "message": "↑ 起点已锁定"
+  },
+  "capLongDetailHint": {
+    "message": "拖住选框下边缘向下拉；到滚动区域底部附近时页面会自动向下滚。松手后可继续拖，截到想要的位置再点“完成”。"
+  },
+  "capLongInitialHint": {
+    "message": "先框选长截图的宽度和起点；松开后拖住下边缘继续向下延伸"
+  },
+  "capSaveFailedDetail": {
+    "message": "保存失败：$1"
+  },
+  "capCapturingProgress": {
+    "message": "正在生成截图… $1%"
+  },
+  "capFullFailedDetail": {
+    "message": "整页截图失败：$1"
+  },
+  "capRangeHeight": {
+    "message": "范围高度 $1 px · 拖住下边缘继续向下"
+  },
+  "capLongFailedDetail": {
+    "message": "长截图失败：$1"
   }
 }

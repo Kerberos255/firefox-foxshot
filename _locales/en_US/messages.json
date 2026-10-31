@@ -94,5 +94,212 @@
   },
   "hideFloatingElementsHint": {
     "message": "Enabled by default. Prevents sticky search bars, floating navigation, back-to-top buttons, and similar overlays from repeating or covering the real captured content."
+  },
+  "capMoveSelection": {
+    "message": "Move selection"
+  },
+  "capRectangle": {
+    "message": "Rectangle"
+  },
+  "capEllipse": {
+    "message": "Ellipse"
+  },
+  "capArrow": {
+    "message": "Arrow"
+  },
+  "capPen": {
+    "message": "Pen"
+  },
+  "capText": {
+    "message": "Text"
+  },
+  "capMosaic": {
+    "message": "Mosaic"
+  },
+  "capColor": {
+    "message": "Color"
+  },
+  "capUndo": {
+    "message": "Undo"
+  },
+  "capRedo": {
+    "message": "Redo"
+  },
+  "capCopy": {
+    "message": "Copy"
+  },
+  "capCopyToClipboard": {
+    "message": "Copy to clipboard"
+  },
+  "capSave": {
+    "message": "Save"
+  },
+  "capSavePng": {
+    "message": "Save PNG"
+  },
+  "capCancel": {
+    "message": "Cancel"
+  },
+  "capSelectRegionHint": {
+    "message": "Drag to select an area; release to resize or annotate."
+  },
+  "capEnterText": {
+    "message": "Enter text:"
+  },
+  "capAnnotationsAdded": {
+    "message": "Annotations added; copy and save will include them."
+  },
+  "capAnnotationsCleared": {
+    "message": "Annotations cleared."
+  },
+  "capBrowseScroll": {
+    "message": "Browse / Scroll"
+  },
+  "capCopyingClipboard": {
+    "message": "Copying to clipboard…"
+  },
+  "capOriginalSize": {
+    "message": "Show at original size"
+  },
+  "capFitWidth": {
+    "message": "Fit width"
+  },
+  "capFitPreviewWidth": {
+    "message": "Fit to preview width"
+  },
+  "capRenderCopy": {
+    "message": "Compositing annotations and copying…"
+  },
+  "capCopying": {
+    "message": "Copying…"
+  },
+  "capCopied": {
+    "message": "✓ Copied to clipboard"
+  },
+  "capCopyFailed": {
+    "message": "Copy failed; click to retry"
+  },
+  "capRenderingAnnotations": {
+    "message": "Compositing annotations…"
+  },
+  "capOpeningSaveDialog": {
+    "message": "Opening save dialog…"
+  },
+  "capSaveSent": {
+    "message": "✓ Sent to Firefox for saving"
+  },
+  "capSaveFailed": {
+    "message": "Save failed"
+  },
+  "capClose": {
+    "message": "Close"
+  },
+  "capAutoCopyFailed": {
+    "message": "Automatic copy failed; click to retry"
+  },
+  "capScrollJumpError": {
+    "message": "Page scroll position kept jumping. Capture stopped to avoid missing content; please try again."
+  },
+  "capTooManyFrames": {
+    "message": "Too many capture frames; select a shorter range and retry."
+  },
+  "capScrollGapError": {
+    "message": "Scroll position skipped uncaptured content; capture stopped to prevent gaps."
+  },
+  "capNoVisibleArea": {
+    "message": "Unable to continue capturing the scrolling area."
+  },
+  "capInvalidCaptureArea": {
+    "message": "Selection is outside the capturable area."
+  },
+  "capNoNewContent": {
+    "message": "Scrolling did not reveal new content."
+  },
+  "capNoCapture": {
+    "message": "No image was captured."
+  },
+  "capIncompleteCoverage": {
+    "message": "Incomplete coverage; stopped to avoid missing rows in the screenshot."
+  },
+  "capOutputTooLarge": {
+    "message": "Screenshot exceeds the safe image dimensions; select a shorter range."
+  },
+  "capAnalyzing": {
+    "message": "Analyzing page…"
+  },
+  "capPageTooTall": {
+    "message": "Page exceeds the safe single-image height. Use scrolling capture to select a smaller area."
+  },
+  "capCapturingFull": {
+    "message": "Capturing full page in fixed steps…"
+  },
+  "capCapturingCurrent": {
+    "message": "Capturing current page…"
+  },
+  "capFullCopied": {
+    "message": "Full-page capture complete, copying…"
+  },
+  "capFullShotTitle": {
+    "message": "Full-page screenshot"
+  },
+  "capScrollerTooTall": {
+    "message": "Scrolling area exceeds the safe image height. Use scrolling capture instead."
+  },
+  "capCapturingInner": {
+    "message": "Detected an inner scroll area; capturing in fixed steps…"
+  },
+  "capCancelling": {
+    "message": "Cancelling screenshot…"
+  },
+  "capSelectionTooTall": {
+    "message": "Selected range exceeds the safe image height; shorten the range."
+  },
+  "capCapturingLong": {
+    "message": "Capturing selected scrolling range…"
+  },
+  "capLongShotTitle": {
+    "message": "Scrolling screenshot"
+  },
+  "capExtendHint": {
+    "message": "Drag the bottom edge down; auto-scroll starts near the bottom."
+  },
+  "capFinish": {
+    "message": "Finish"
+  },
+  "capCaptureRange": {
+    "message": "Capture this range"
+  },
+  "capReselect": {
+    "message": "Reselect"
+  },
+  "capReselectHint": {
+    "message": "Select the scrolling range again"
+  },
+  "capCancelLong": {
+    "message": "Cancel scrolling capture"
+  },
+  "capOriginLocked": {
+    "message": "↑ Starting point locked"
+  },
+  "capLongDetailHint": {
+    "message": "Drag the bottom of the selection toward the lower edge to auto-scroll. Release to adjust again, then click Finish."
+  },
+  "capLongInitialHint": {
+    "message": "First select the width and starting point, then drag the bottom edge down to extend."
+  },
+  "capSaveFailedDetail": {
+    "message": "Save failed: $1"
+  },
+  "capCapturingProgress": {
+    "message": "Capturing… $1%"
+  },
+  "capFullFailedDetail": {
+    "message": "Full-page capture failed: $1"
+  },
+  "capRangeHeight": {
+    "message": "Height $1 px · drag the lower edge to extend"
+  },
+  "capLongFailedDetail": {
+    "message": "Scrolling capture failed: $1"
   }
 }

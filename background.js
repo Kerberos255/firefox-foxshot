@@ -21,11 +21,33 @@ async function ensureCaptureScript(tabId) {
   });
 }
 
+const pendingStarts = new Map();
+
 async function startMode(mode, explicitTab = null) {
   const tab = explicitTab?.id ? explicitTab : await getActiveTab();
   if (!tab?.id) throw new Error("No active tab");
-  await ensureCaptureScript(tab.id);
-  await browser.tabs.sendMessage(tab.id, { type: "foxshot.start", mode });
+  const previous = pendingStarts.get(tab.id);
+  if (previous) previous.cancelled = true;
+  const task = { cancelled: false };
+  pendingStarts.set(tab.id, task);
+  try {
+    await ensureCaptureScript(tab.id);
+    if (task.cancelled) return { cancelled: true };
+    await browser.tabs.sendMessage(tab.id, { type: "foxshot.start", mode });
+    if (task.cancelled) {
+      await browser.tabs.sendMessage(tab.id, { type: "foxshot.cancel" }).catch(() => {});
+    }
+    return { cancelled: task.cancelled };
+  } finally {
+    if (pendingStarts.get(tab.id) === task) pendingStarts.delete(tab.id);
+  }
+}
+
+async function cancelMode() {
+  const tab = await getActiveTab();
+  const pending = pendingStarts.get(tab.id);
+  if (pending) pending.cancelled = true;
+  await browser.tabs.sendMessage(tab.id, { type: "foxshot.cancel" }).catch(() => {});
 }
 
 const SHORTCUT_COMMAND = "capture-region";
@@ -101,6 +123,12 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
   if (message.type === "foxshot.startMode") {
     return startMode(message.mode).then(
+      (result) => ({ ok: true, cancelled: Boolean(result?.cancelled) }),
+      (error) => ({ ok: false, error: String(error?.message || error) })
+    );
+  }
+  if (message.type === "foxshot.cancelMode") {
+    return cancelMode().then(
       () => ({ ok: true }),
       (error) => ({ ok: false, error: String(error?.message || error) })
     );
