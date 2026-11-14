@@ -138,17 +138,81 @@
       if (session.scrollControls) restoreCaptureScrollControls(session.scrollControls);
       longSession = null;
     }
-    if (ui?.host?.isConnected) ui.host.remove();
+    if (ui?.modalShell?.open) ui.modalShell.close();
+    if (ui?.popoverHost?.matches(":popover-open")) ui.popoverHost.hidePopover();
+    if (ui?.modalShell?.isConnected) ui.modalShell.remove();
+    else if (ui?.host?.isConnected) ui.host.remove();
+    ui?.backdropStyle?.remove();
     ui = null;
     interaction = null;
     resultEditor = null;
   }
 
+  // Native modal dialogs and popovers live in the browser top layer.
+  // A regular z-index overlay cannot cover them.
+  function findForegroundSurface() {
+    const surfaces = [];
+    function scan(root) {
+      for (const node of root.querySelectorAll("*")) {
+        if (node === ui?.host) continue;
+        if (node.matches?.('dialog:modal, :popover-open, [role="dialog"][aria-modal="true"], [aria-modal="true"]')) {
+          const rect = node.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0 && getComputedStyle(node).visibility !== "hidden") surfaces.push(node);
+        }
+        if (node.shadowRoot) scan(node.shadowRoot);
+      }
+    }
+    scan(document);
+    // A native modal must stay above other top-layer elements created later.
+    return surfaces.filter((node) => node.matches("dialog:modal")).at(-1)
+      || surfaces.filter((node) => node.matches(":popover-open")).at(-1)
+      || surfaces.at(-1) || null;
+  }
+
+  function hideCaptureUIForProbe(callback) {
+    const shown = ui;
+    if (!shown) return callback();
+    const previous = shown.host.style.display;
+    if (shown.modalShell?.open) shown.modalShell.close();
+    if (shown.popoverHost?.matches(":popover-open")) shown.popoverHost.hidePopover();
+    shown.host.style.display = "none";
+    try {
+      return callback();
+    } finally {
+      if (ui === shown && shown.host.isConnected) {
+        shown.host.style.display = previous;
+        if (shown.modalShell && !shown.modalShell.open) shown.modalShell.showModal();
+        else if (shown.popoverHost && !shown.popoverHost.matches(":popover-open")) shown.popoverHost.showPopover();
+      }
+    }
+  }
+
   function mountBase() {
     destroyUI();
+    const foreground = findForegroundSurface();
+    const topLayer = Boolean(foreground?.matches("dialog:modal, :popover-open"));
+    const modalTopLayer = Boolean(foreground?.matches("dialog:modal"));
     const host = document.createElement("div");
     host.dataset.foxshotUi = "true";
     host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;";
+    const popoverHost = topLayer && !modalTopLayer ? host : null;
+    if (popoverHost) {
+      // Manual popovers do not dismiss an existing auto popover.
+      host.popover = "manual";
+      host.style.cssText += "margin:0;padding:0;border:0;width:100vw;height:100vh;max-width:none;max-height:none;overflow:visible;background:transparent;";
+    }
+    // dialog itself cannot attach a shadow root in current browsers; keep
+    // the extension UI in a shadow-host div inside a transparent modal shell.
+    let modalShell = null;
+    let backdropStyle = null;
+    if (modalTopLayer) {
+      modalShell = document.createElement("dialog");
+      modalShell.dataset.foxshotUiShell = "true";
+      modalShell.style.cssText = "position:fixed;inset:0;margin:0;padding:0;border:0;width:100vw;height:100vh;max-width:none;max-height:none;overflow:visible;background:transparent;pointer-events:none;";
+      backdropStyle = document.createElement("style");
+      backdropStyle.textContent = 'dialog[data-foxshot-ui-shell="true"]::backdrop { background:transparent!important;backdrop-filter:none!important; }';
+      document.documentElement.append(backdropStyle);
+    }
     const shadow = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent = `
@@ -209,8 +273,19 @@
       .handle.s.long-grip { width:22px; height:14px; left:50%; bottom:-8px; transform:translateX(-50%); border-radius:7px; box-shadow:0 2px 7px rgba(0,0,0,.35); }
     `;
     shadow.append(style);
-    document.documentElement.append(host);
-    ui = { host, shadow, style };
+    if (modalShell) modalShell.append(host);
+    document.documentElement.append(modalShell || host);
+    ui = { host, shadow, style, foreground, topLayer, modalShell, popoverHost, backdropStyle };
+    if (modalShell) {
+      modalShell.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        if (longSession) cancelLongRange().catch(() => destroyUI());
+        else destroyUI();
+      });
+      modalShell.showModal();
+    } else if (popoverHost) {
+      popoverHost.showPopover();
+    }
     return ui;
   }
 
@@ -594,13 +669,20 @@
     if (!ui) {
       return browser.runtime.sendMessage({ type:"foxshot.captureVisible", ...(scale ? { scale } : {}) });
     }
-    const previous = ui.host.style.display;
-    ui.host.style.display = "none";
+    const shown = ui;
+    const previous = shown.host.style.display;
+    if (shown.modalShell?.open) shown.modalShell.close();
+    if (shown.popoverHost?.matches(":popover-open")) shown.popoverHost.hidePopover();
+    shown.host.style.display = "none";
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     try {
       return await browser.runtime.sendMessage({ type:"foxshot.captureVisible", ...(scale ? { scale } : {}) });
     } finally {
-      ui.host.style.display = previous;
+      if (ui === shown && shown.host.isConnected) {
+        shown.host.style.display = previous;
+        if (shown.modalShell && !shown.modalShell.open) shown.modalShell.showModal();
+        else if (shown.popoverHost && !shown.popoverHost.matches(":popover-open")) shown.popoverHost.showPopover();
+      }
     }
   }
 
@@ -1050,13 +1132,18 @@
   }
 
   function elementUnderUI(x, y) {
-    const host = ui?.host;
-    const previous = host?.style.display;
-    if (host) host.style.display = "none";
-    let element = null;
-    try { element = document.elementFromPoint(clamp(x, 0, innerWidth - 1), clamp(y, 0, innerHeight - 1)); }
-    finally { if (host) host.style.display = previous; }
-    return element;
+    return hideCaptureUIForProbe(() => {
+      const px = clamp(x, 0, innerWidth - 1), py = clamp(y, 0, innerHeight - 1);
+      let element = document.elementFromPoint(px, py);
+      // The document hit test retargets inside shadow trees to their host.
+      // Walk open shadow roots to find the actual internal scroll target.
+      for (let depth = 0; depth < 12 && element?.shadowRoot; depth += 1) {
+        const inside = element.shadowRoot.elementFromPoint(px, py);
+        if (!inside || inside === element) break;
+        element = inside;
+      }
+      return element;
+    });
   }
 
   function isScrollableElement(element) {
@@ -1070,9 +1157,29 @@
     let element = elementUnderUI(x, y);
     while (element && element !== document.body && element !== document.documentElement) {
       if (isScrollableElement(element)) return makeScroller(element);
-      element = element.parentElement;
+      element = element.parentElement || element.getRootNode()?.host || null;
     }
     return makeScroller(null);
+  }
+
+  function findForegroundScroller(surface) {
+    if (!surface?.isConnected) return null;
+    const candidates = [];
+    function scan(root) {
+      for (const element of root.querySelectorAll("*")) {
+        if (isScrollableElement(element)) {
+          const r = element.getBoundingClientRect();
+          const width = Math.max(0, Math.min(innerWidth, r.right) - Math.max(0, r.left));
+          const height = Math.max(0, Math.min(innerHeight, r.bottom) - Math.max(0, r.top));
+          if (width > 40 && height > 40) candidates.push({ element, area: width * height });
+        }
+        if (element.shadowRoot) scan(element.shadowRoot);
+      }
+    }
+    scan(surface);
+    // Prefer the main content pane over narrow scrollable menus/widgets.
+    candidates.sort((a, b) => b.area - a.area);
+    return candidates.length ? makeScroller(candidates[0].element) : null;
   }
 
   function makeScroller(element) {
@@ -1422,7 +1529,8 @@
     const screenX = Math.max(0, Number(options.screenX) || 0);
     const width = Math.max(1, Number(options.width) || 1);
     const status = options.status || null;
-    const hideFloating = options.hideFloatingElements ?? await shouldHideFloatingElements();
+    // Content dialogs must never be mistaken for repeated floating navigation.
+    const hideFloating = options.hideFloatingElements ?? (!ui?.foreground && await shouldHideFloatingElements());
     const frames = [];
     let cursor = start;
     let scale = null;
@@ -1556,7 +1664,19 @@
     let originTop = 0;
     try {
       assertCaptureRunning(task);
-      if (rootIsScrollable()) {
+      const foregroundScroller = findForegroundScroller(ui?.foreground);
+      if (ui?.foreground && !foregroundScroller) {
+        // The foreground dialog fits in the viewport: preserve exactly what
+        // the user sees instead of scrolling the page behind the dialog.
+        const dataUrl = await captureVisibleWithoutUI();
+        assertCaptureRunning(task);
+        currentCapture = null;
+        showResultDataUrl(dataUrl, t("capFullShotTitle", "整页截图"), "FoxShot-full", true);
+        return;
+      }
+      if (foregroundScroller) {
+        scroller = foregroundScroller;
+      } else if (rootIsScrollable()) {
         scroller = makeScroller(null);
       } else {
         scroller = findScrollerAt(innerWidth / 2, innerHeight / 2);

@@ -4,7 +4,9 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "test": "node tests/smoke.mjs",
+    "test": "node tests/smoke.mjs && node tests/popup-esc.mjs",
+    "test:modal-browser": "node tests/modal-browser.mjs",
+    "test:ui-browser": "node tests/ui-browser.mjs",
     "test:render-e2e": "node tests/render-e2e.mjs"
   }
 }
