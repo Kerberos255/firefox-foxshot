@@ -44,4 +44,4 @@ jobs:
             echo "$TAG already exists; nothing to do."
             exit 0
           fi
-          gh release create "$TAG" "$XPI" --target "$GITHUB_SHA" --title "FoxShot $VERSION" --notes "FoxShot $VERSION improves long/full-page screenshot reliability with pixel-based seam alignment, better scroll-snap/sticky handling, and Firefox regression coverage for capture drift."
+          gh release create "$TAG" "$XPI" --target "$GITHUB_SHA" --title "FoxShot $VERSION" --notes "See [CHANGELOG.md](https://github.com/Kerberos255/firefox-foxshot/blob/main/CHANGELOG.md) for changes in FoxShot $VERSION."

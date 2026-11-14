@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3
+
+- Capture in front of open modal dialogs, including dialogs inside open Shadow DOM, without closing the original dialog.
+- Prioritize foreground modal scroll containers for full-page and scrolling screenshots; preserve the modal, content, and original scroll position after capture.
+- Support top-layer popovers without dismissing existing page popovers, and retain ordinary-page capture behavior.
+- Refresh the capture popup and options page with responsive mode cards, light/dark themes, and keyboard-accessible controls.
+- Show the user's actual configured shortcut in the popup and prevent duplicate capture requests while starting.
+- Add browser regression tests for modal captures, popup/options interactions, light/dark styling, and Escape cancellation.
+
 ## 1.2
 
 - Fix intermittent horizontal seams, missing text rows, and duplicated content in long and full-page screenshots by visually registering overlapping Firefox capture frames instead of trusting scroll coordinates alone.

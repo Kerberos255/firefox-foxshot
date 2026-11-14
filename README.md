@@ -5,11 +5,13 @@ FoxShot is a lightweight Firefox screenshot extension that works entirely on-dev
 ## Features
 
 - **Region screenshot** — drag to select an area, resize/move the selection after mouse-up, then annotate with rectangles, ellipses, arrows, brush strokes, text, and freehand mosaic strokes.
-- **Full-page screenshot** — captures the page in deterministic fixed-height steps and stitches the original screenshot frames directly. It works with ordinary document scrolling and detected nested scroll containers.
+- **Full-page screenshot** — captures the page in deterministic fixed-height steps and stitches the original screenshot frames directly. It works with ordinary document scrolling, detected nested scroll containers, and scrollable foreground dialogs.
 - **Scrolling screenshot** — select the width and starting point, then drag the lower edge downward. Near the bottom of the scroll area FoxShot auto-scrolls while the start stays locked. The drag only defines the range; after you click **Finish**, FoxShot captures that range in deterministic steps, so human scroll distance cannot create gaps or overlaps.
 - Completed full-page and scrolling screenshots are copied to the clipboard automatically and shown in an editable preview with rectangle, ellipse, arrow, pen, text, mosaic, undo, and redo tools.
 - Stitched captures ignore visible fixed and pinned-sticky floating overlays by default so sticky search/navigation bars do not repeat or cover the selected content. This can be disabled in Settings.
 - PNG save remains available from the preview; copy/save include any preview annotations.
+- **Foreground dialogs** — region, full-page, and scrolling capture can be started while a modal dialog or popover is open, including supported dialogs inside open Shadow DOM. Screenshots preserve the foreground content and restore the original dialog state.
+- **Updated UI** — compact mode cards and settings layouts adapt to light and dark themes; the popup displays your current custom shortcut.
 - **Keyboard shortcut** — region capture defaults to `Alt+Shift+A` and can be changed from FoxShot settings.
 
 ## Privacy
@@ -50,7 +52,7 @@ Requires Python 3:
 python tools/build.py
 ```
 
-Output: `dist/foxshot-1.1.xpi` (unsigned; AMO signing is required for normal permanent installation on Firefox Release).
+Output: `dist/foxshot-1.3.xpi` (unsigned; AMO signing is required for normal permanent installation on Firefox Release).
 
 ## Current boundaries
 
