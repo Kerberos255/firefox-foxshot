@@ -6,7 +6,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "1.3");
+assert.equal(manifest.version, "1.4");
 assert.equal(manifest.name, "__MSG_extensionName__");
 assert.ok(manifest.permissions.includes("activeTab"));
 assert.ok(manifest.permissions.includes("scripting"));

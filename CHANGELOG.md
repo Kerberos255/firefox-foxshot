@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4
+
+- Redesign the region-capture, scrolling-capture, and preview annotation toolbars with frosted glass surfaces, uniform linear SVG icons (including a floppy-disk save icon), a FoxShot orange accent, and an on-demand secondary attribute bar for stroke/text size and curated color swatches.
+- Replace native `window.prompt()` text annotation dialogs with an in-place text editor supporting live color/size updates, `Shift+Enter` line breaks, `Enter` commit, and `Esc` cancel.
+- Upgrade mosaic annotation to real-time WYSIWYG pixelation on both region capture and full/long result previews, with global grid alignment across overlapping strokes, single-click dab support, instant undo restoration, and a high-contrast checkerboard fallback.
+- Support `Enter` and double-click inside the region selection to copy and finish; toggle an active annotation tool off to return directly to selection dragging.
+- Refresh the toolbar popup into a compact Bento layout (primary region-capture card with split shortcut keycaps + side-by-side full-page and scrolling tiles) with concise copy.
+- Add an Appearance theme preference (`System` / `Light` / `Dark`, defaulting to `System`) in Settings that applies live across the settings page, popup, capture toolbars, and preview overlay.
+
 ## 1.3
 
 - Capture in front of open modal dialogs, including dialogs inside open Shadow DOM, without closing the original dialog.
