@@ -12,19 +12,19 @@
     "message": "区域截图"
   },
   "regionHint": {
-    "message": "框选、调整并标注"
+    "message": "自由框选与标注"
   },
   "fullShot": {
     "message": "整页截图"
   },
   "fullHint": {
-    "message": "固定步长捕获并稳定拼接"
+    "message": "捕获完整网页"
   },
   "longShot": {
     "message": "长截图"
   },
   "longHint": {
-    "message": "锁定起点，拖下边缘延伸范围"
+    "message": "下拉自由延伸"
   },
   "cannotCapture": {
     "message": "这个页面无法截图。"
@@ -301,5 +301,59 @@
   },
   "capLongFailedDetail": {
     "message": "长截图失败：$1"
+  },
+  "appearanceHeading": {
+    "message": "外观"
+  },
+  "themeLabel": {
+    "message": "工具栏与界面主题"
+  },
+  "themeHint": {
+    "message": "默认跟随系统或 Firefox 外观，也可手动固定为浅色或深色磨砂风格。"
+  },
+  "themeSystem": {
+    "message": "跟随系统"
+  },
+  "themeLight": {
+    "message": "浅色"
+  },
+  "themeDark": {
+    "message": "深色"
+  },
+  "capSizeSmall": {
+    "message": "细"
+  },
+  "capSizeMedium": {
+    "message": "中"
+  },
+  "capSizeLarge": {
+    "message": "粗"
+  },
+  "capTextSmall": {
+    "message": "小"
+  },
+  "capTextMedium": {
+    "message": "中"
+  },
+  "capTextLarge": {
+    "message": "大"
+  },
+  "capTextPlaceholder": {
+    "message": "输入文字…"
+  },
+  "capMosaicBrushHint": {
+    "message": "画笔大小"
+  },
+  "capCopyShortcutHint": {
+    "message": "复制到剪贴板 (Enter)"
+  },
+  "capCancelShortcutHint": {
+    "message": "取消 (Esc)"
+  },
+  "capUndoShortcutHint": {
+    "message": "撤销 (Ctrl+Z)"
+  },
+  "capRedoShortcutHint": {
+    "message": "重做 (Ctrl+Y)"
   }
 }

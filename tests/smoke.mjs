@@ -97,5 +97,13 @@ const optionsHtml = fs.readFileSync(path.join(root, "options/options.html"), "ut
 const optionsJs = fs.readFileSync(path.join(root, "options/options.js"), "utf8");
 assert.match(optionsHtml, /hideFloatingElements/, "settings toggle for floating elements missing");
 assert.match(optionsJs, /hideFloatingElements/, "settings logic for floating elements missing");
+assert.match(optionsHtml, /theme-switcher/, "settings theme switcher missing");
+assert.match(optionsJs, /uiTheme/, "settings theme preference persistence missing");
+assert.match(captureSource, /createAttributeSubBar/, "secondary annotation attribute sub-bar missing");
+assert.match(captureSource, /openInlineTextEditor/, "in-place text annotation editor missing");
+assert.ok(!captureSource.includes("window.prompt("), "native window.prompt should be replaced by in-place text input");
+assert.match(captureSource, /buildMosaicCacheFromImage/, "real-time pixel mosaic cache missing");
+assert.match(captureSource, /paintMosaicPoints/, "real-time incremental mosaic painter missing");
+assert.ok(!captureSource.includes('rgba(255,255,255,.72)'), "legacy low-contrast white mosaic preview stroke should be removed");
 
 console.log("FoxShot smoke checks passed");

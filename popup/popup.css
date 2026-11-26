@@ -1,37 +1,82 @@
 :root {
   color-scheme: light dark;
   --accent: #f97316;
-  --accent-soft: rgba(249, 115, 22, 0.14);
-  --accent-border: rgba(249, 115, 22, 0.36);
+  --accent-strong: #ea580c;
+  --accent-soft: rgba(249, 115, 22, 0.12);
+  --accent-grad: linear-gradient(135deg, rgba(249, 115, 22, 0.13), rgba(251, 146, 60, 0.04));
+  --accent-grad-hover: linear-gradient(135deg, rgba(249, 115, 22, 0.19), rgba(251, 146, 60, 0.07));
+  --accent-border: rgba(249, 115, 22, 0.28);
+  --accent-border-hover: rgba(249, 115, 22, 0.48);
+  --accent-shadow: 0 8px 20px -10px rgba(249, 115, 22, 0.36);
   --bg: #ffffff;
   --surface: #f8fafc;
   --surface-hover: #f1f5f9;
-  --border: rgba(15, 23, 42, 0.09);
-  --border-strong: rgba(15, 23, 42, 0.16);
+  --icon-bg: rgba(15, 23, 42, 0.055);
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.15);
   --text: #0f172a;
   --muted: #64748b;
-  --kbd-bg: rgba(15, 23, 42, 0.06);
+  --kbd-bg: rgba(255, 255, 255, 0.86);
+  --kbd-border: rgba(15, 23, 42, 0.12);
+  --kbd-text: #475569;
   --danger-bg: rgba(239, 68, 68, 0.1);
   --danger-text: #dc2626;
   font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --accent: #fb923c;
-    --accent-soft: rgba(251, 146, 60, 0.15);
-    --accent-border: rgba(251, 146, 60, 0.38);
-    --bg: #131317;
-    --surface: #1b1b22;
-    --surface-hover: #23232c;
+    --accent-strong: #f97316;
+    --accent-soft: rgba(251, 146, 60, 0.16);
+    --accent-grad: linear-gradient(135deg, rgba(251, 146, 60, 0.18), rgba(249, 115, 22, 0.06));
+    --accent-grad-hover: linear-gradient(135deg, rgba(251, 146, 60, 0.25), rgba(249, 115, 22, 0.10));
+    --accent-border: rgba(251, 146, 60, 0.32);
+    --accent-border-hover: rgba(251, 146, 60, 0.52);
+    --accent-shadow: 0 10px 22px -10px rgba(249, 115, 22, 0.45);
+    --bg: #15161b;
+    --surface: #1d1f26;
+    --surface-hover: #252832;
+    --icon-bg: rgba(255, 255, 255, 0.07);
     --border: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(255, 255, 255, 0.15);
     --text: #f4f4f6;
-    --muted: #8e8ea0;
-    --kbd-bg: rgba(255, 255, 255, 0.07);
-    --danger-bg: rgba(239, 68, 68, 0.15);
+    --muted: #9397a8;
+    --kbd-bg: rgba(255, 255, 255, 0.08);
+    --kbd-border: rgba(255, 255, 255, 0.14);
+    --kbd-text: #cbd5e1;
+    --danger-bg: rgba(239, 68, 68, 0.16);
     --danger-text: #f87171;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #fb923c;
+  --accent-strong: #f97316;
+  --accent-soft: rgba(251, 146, 60, 0.16);
+  --accent-grad: linear-gradient(135deg, rgba(251, 146, 60, 0.18), rgba(249, 115, 22, 0.06));
+  --accent-grad-hover: linear-gradient(135deg, rgba(251, 146, 60, 0.25), rgba(249, 115, 22, 0.10));
+  --accent-border: rgba(251, 146, 60, 0.32);
+  --accent-border-hover: rgba(251, 146, 60, 0.52);
+  --accent-shadow: 0 10px 22px -10px rgba(249, 115, 22, 0.45);
+  --bg: #15161b;
+  --surface: #1d1f26;
+  --surface-hover: #252832;
+  --icon-bg: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --text: #f4f4f6;
+  --muted: #9397a8;
+  --kbd-bg: rgba(255, 255, 255, 0.08);
+  --kbd-border: rgba(255, 255, 255, 0.14);
+  --kbd-text: #cbd5e1;
+  --danger-bg: rgba(239, 68, 68, 0.16);
+  --danger-text: #f87171;
 }
 
 * {
@@ -39,7 +84,7 @@
 }
 
 body {
-  width: 320px;
+  width: 312px;
   margin: 0;
   padding: 12px;
   background: var(--bg);
@@ -66,59 +111,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 4px 10px;
+  padding: 0 2px 10px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
-.brand-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(249, 115, 22, 0.05));
-  border: 1px solid rgba(249, 115, 22, 0.25);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.brand-logo img {
+.brand-icon {
   width: 22px;
   height: 22px;
   display: block;
+  flex-shrink: 0;
 }
 
-.brand-meta {
-  min-width: 0;
-}
-
-.brand-meta strong {
-  display: block;
+.brand strong {
   font-size: 14.5px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   line-height: 1.2;
-}
-
-.brand-meta small {
-  display: block;
-  font-size: 11.5px;
-  color: var(--muted);
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .icon-btn {
   appearance: none;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
@@ -128,12 +148,12 @@ body {
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease, transform 0.12s ease;
 }
 
 .icon-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
 }
 
 .icon-btn:hover {
@@ -143,14 +163,14 @@ body {
 }
 
 .icon-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.94);
 }
 
-/* Mode List: minmax(0, 1fr) strictly prevents CSS Grid child blowout */
+/* Bento Grid: 1 full-width primary hero + 2 side-by-side tiles */
 .mode-list {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .mode-card {
@@ -160,14 +180,10 @@ body {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  border-radius: 11px;
-  padding: 10px 11px;
-  display: flex;
-  align-items: center;
-  gap: 11px;
+  border-radius: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.12s ease, box-shadow 0.14s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 }
 
 .mode-card:hover {
@@ -175,26 +191,61 @@ body {
   border-color: var(--border-strong);
 }
 
-.mode-card.is-primary:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 4px 14px -6px rgba(249, 115, 22, 0.28);
-}
-
 .mode-card:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.99);
 }
 
 .mode-card:focus-visible,
 .icon-btn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+
+/* Hero Primary Card */
+.mode-card.is-primary {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  background: var(--accent-grad);
+  border-color: var(--accent-border);
+}
+
+.mode-card.is-primary:hover {
+  background: var(--accent-grad-hover);
+  border-color: var(--accent-border-hover);
+  box-shadow: var(--accent-shadow);
+}
+
+.mode-card.is-primary .mode-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fb923c, #f97316);
+  color: #ffffff;
+  box-shadow: 0 4px 10px -4px rgba(249, 115, 22, 0.55);
+}
+
+.mode-card.is-primary .mode-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* Secondary Tiles */
+.mode-card.is-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px 12px;
 }
 
 .mode-icon {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 9px;
-  background: var(--kbd-bg);
+  background: var(--icon-bg);
   color: var(--text);
   display: grid;
   place-items: center;
@@ -202,56 +253,34 @@ body {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.mode-card.is-primary .mode-icon,
-.mode-card:hover .mode-icon {
+.mode-card.is-tile:hover .mode-icon {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
 .mode-icon svg {
-  width: 19px;
-  height: 19px;
+  width: 17px;
+  height: 17px;
 }
 
 .mode-copy {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-width: 0;
-}
-
-.mode-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 2px;
-  min-width: 0;
+  width: 100%;
 }
 
 .mode-copy b {
+  display: block;
   font-size: 13.5px;
   font-weight: 600;
   line-height: 1.25;
-  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.kbd-badge {
-  font: 600 10px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  padding: 2px 5px;
-  border-radius: 5px;
-  background: var(--kbd-bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  letter-spacing: -0.02em;
-  flex-shrink: 0;
-}
-
-.mode-card.is-primary:hover .kbd-badge {
-  color: var(--accent);
-  border-color: var(--accent-border);
-  background: var(--accent-soft);
+.mode-card.is-primary .mode-copy b {
+  font-size: 14px;
 }
 
 .mode-copy small {
@@ -259,26 +288,52 @@ body {
   font-size: 11.5px;
   color: var(--muted);
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mode-arrow {
-  width: 15px;
-  height: 15px;
-  color: var(--muted);
-  opacity: 0.45;
+/* Split Keycap Shortcut Badge */
+.kbd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   flex-shrink: 0;
-  transition: transform 0.15s ease, opacity 0.15s ease, color 0.15s ease;
+  font: 600 10.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--kbd-text);
 }
 
-.mode-card:hover .mode-arrow {
-  opacity: 0.95;
-  color: var(--text);
-  transform: translateX(2px);
+.kbd-badge[hidden] {
+  display: none;
 }
 
-.mode-card.is-primary:hover .mode-arrow {
-  color: var(--accent);
+.kbd-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  box-shadow: 0 1px 0 var(--kbd-border);
+  letter-spacing: -0.01em;
+}
+
+.kbd-plus {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.mode-card.is-primary:hover .kbd-key {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
 }
 
 button:disabled {
@@ -288,14 +343,14 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .icon-btn, .mode-card, .mode-arrow, .mode-icon { transition: none; }
+  .icon-btn, .mode-card, .mode-icon { transition: none; }
 }
 
 /* Status message (collapses cleanly when empty) */
 #status {
-  margin: 8px 0 0;
+  margin: 9px 0 0;
   padding: 7px 10px;
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--danger-bg);
   color: var(--danger-text);
   font-size: 12px;

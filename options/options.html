@@ -20,6 +20,40 @@
 
     <section class="card">
       <div class="card-head">
+        <h2 data-i18n="appearanceHeading">外观</h2>
+      </div>
+      <div class="theme-row">
+        <div class="theme-copy">
+          <span class="toggle-title" data-i18n="themeLabel">工具栏与界面主题</span>
+          <p class="hint" data-i18n="themeHint">默认跟随系统或 Firefox 外观，也可手动固定为浅色或深色磨砂风格。</p>
+        </div>
+        <div id="theme-switcher" class="segmented" role="radiogroup" aria-label="工具栏与界面主题">
+          <button type="button" class="seg-btn is-active" role="radio" aria-checked="true" data-theme-value="system">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="12" rx="2"/>
+              <path d="M8 20h8M12 16v4"/>
+            </svg>
+            <span data-i18n="themeSystem">跟随系统</span>
+          </button>
+          <button type="button" class="seg-btn" role="radio" aria-checked="false" data-theme-value="light">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 3v2M12 19v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M3 12h2M19 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+            </svg>
+            <span data-i18n="themeLight">浅色</span>
+          </button>
+          <button type="button" class="seg-btn" role="radio" aria-checked="false" data-theme-value="dark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z"/>
+            </svg>
+            <span data-i18n="themeDark">深色</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
         <h2 data-i18n="captureHeading">截图</h2>
       </div>
       <label class="toggle-row" for="hideFloatingElements">

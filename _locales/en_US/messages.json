@@ -12,19 +12,19 @@
     "message": "Region screenshot"
   },
   "regionHint": {
-    "message": "Select, resize, and annotate"
+    "message": "Select an area and annotate"
   },
   "fullShot": {
     "message": "Full-page screenshot"
   },
   "fullHint": {
-    "message": "Deterministic fixed-step capture and stitching"
+    "message": "Capture the entire page"
   },
   "longShot": {
     "message": "Scrolling screenshot"
   },
   "longHint": {
-    "message": "Lock the start, then extend the lower edge"
+    "message": "Drag down to extend"
   },
   "cannotCapture": {
     "message": "FoxShot cannot capture this page."
@@ -301,5 +301,59 @@
   },
   "capLongFailedDetail": {
     "message": "Scrolling capture failed: $1"
+  },
+  "appearanceHeading": {
+    "message": "Appearance"
+  },
+  "themeLabel": {
+    "message": "Toolbar & interface theme"
+  },
+  "themeHint": {
+    "message": "Follows your system or Firefox appearance by default, or lock to light or dark frosted glass."
+  },
+  "themeSystem": {
+    "message": "System"
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "capSizeSmall": {
+    "message": "Thin"
+  },
+  "capSizeMedium": {
+    "message": "Medium"
+  },
+  "capSizeLarge": {
+    "message": "Thick"
+  },
+  "capTextSmall": {
+    "message": "S"
+  },
+  "capTextMedium": {
+    "message": "M"
+  },
+  "capTextLarge": {
+    "message": "L"
+  },
+  "capTextPlaceholder": {
+    "message": "Type text…"
+  },
+  "capMosaicBrushHint": {
+    "message": "Brush size"
+  },
+  "capCopyShortcutHint": {
+    "message": "Copy to clipboard (Enter)"
+  },
+  "capCancelShortcutHint": {
+    "message": "Cancel (Esc)"
+  },
+  "capUndoShortcutHint": {
+    "message": "Undo (Ctrl+Z)"
+  },
+  "capRedoShortcutHint": {
+    "message": "Redo (Ctrl+Y)"
   }
 }

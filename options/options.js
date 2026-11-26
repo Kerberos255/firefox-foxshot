@@ -10,16 +10,54 @@ const COMMAND = "capture-region";
 const DEFAULT_SHORTCUT = "Alt+Shift+A";
 const input = document.getElementById("shortcut");
 const status = document.getElementById("status");
-
 const hideFloatingInput = document.getElementById("hideFloatingElements");
+const themeSwitcher = document.getElementById("theme-switcher");
+const themeButtons = [...document.querySelectorAll("#theme-switcher button[data-theme-value]")];
+
+const themeLabel = browser.i18n.getMessage("themeLabel");
+if (themeSwitcher && themeLabel) themeSwitcher.setAttribute("aria-label", themeLabel);
+
+function normalizeTheme(value) {
+  return value === "light" || value === "dark" ? value : "system";
+}
+
+function applyThemePreference(theme) {
+  const normalized = normalizeTheme(theme);
+  if (normalized === "light" || normalized === "dark") {
+    document.documentElement.dataset.theme = normalized;
+  } else {
+    delete document.documentElement.dataset.theme;
+  }
+  for (const btn of themeButtons) {
+    const active = btn.dataset.themeValue === normalized;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-checked", active ? "true" : "false");
+  }
+}
 
 async function loadCaptureSettings() {
-  const settings = await browser.storage.local.get({ hideFloatingElements: true });
+  const settings = await browser.storage.local.get({
+    hideFloatingElements: true,
+    uiTheme: "system"
+  });
   hideFloatingInput.checked = settings.hideFloatingElements !== false;
+  applyThemePreference(settings.uiTheme);
 }
 
 hideFloatingInput?.addEventListener("change", async () => {
   await browser.storage.local.set({ hideFloatingElements: hideFloatingInput.checked });
+});
+
+for (const btn of themeButtons) {
+  btn.addEventListener("click", async () => {
+    const next = normalizeTheme(btn.dataset.themeValue);
+    applyThemePreference(next);
+    await browser.storage.local.set({ uiTheme: next });
+  });
+}
+
+browser.storage?.onChanged?.addListener?.((changes, area) => {
+  if (area === "local" && changes.uiTheme) applyThemePreference(changes.uiTheme.newValue);
 });
 
 function setStatus(text, error = false) {

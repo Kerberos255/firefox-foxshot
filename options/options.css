@@ -6,10 +6,12 @@
   --bg: #f8fafc;
   --surface: #ffffff;
   --surface-subtle: #f1f5f9;
-  --border: rgba(15, 23, 42, 0.1);
-  --border-strong: rgba(15, 23, 42, 0.2);
+  --border: rgba(15, 23, 42, 0.09);
+  --border-strong: rgba(15, 23, 42, 0.18);
   --text: #0f172a;
   --muted: #64748b;
+  --seg-active-bg: #ffffff;
+  --seg-active-shadow: 0 1px 4px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(249, 115, 22, 0.25);
   --ok-bg: rgba(16, 185, 129, 0.12);
   --ok-text: #059669;
   --danger-bg: rgba(239, 68, 68, 0.12);
@@ -17,8 +19,12 @@
   font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --accent: #fb923c;
     --accent-hover: #f97316;
     --accent-soft: rgba(251, 146, 60, 0.16);
@@ -29,11 +35,33 @@
     --border-strong: rgba(255, 255, 255, 0.18);
     --text: #f4f4f6;
     --muted: #9494a8;
+    --seg-active-bg: #2a2b36;
+    --seg-active-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(251, 146, 60, 0.34);
     --ok-bg: rgba(16, 185, 129, 0.15);
     --ok-text: #34d399;
     --danger-bg: rgba(239, 68, 68, 0.16);
     --danger-text: #f87171;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #fb923c;
+  --accent-hover: #f97316;
+  --accent-soft: rgba(251, 146, 60, 0.16);
+  --bg: #0f0f13;
+  --surface: #18181f;
+  --surface-subtle: #22222c;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #f4f4f6;
+  --muted: #9494a8;
+  --seg-active-bg: #2a2b36;
+  --seg-active-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(251, 146, 60, 0.34);
+  --ok-bg: rgba(16, 185, 129, 0.15);
+  --ok-text: #34d399;
+  --danger-bg: rgba(239, 68, 68, 0.16);
+  --danger-text: #f87171;
 }
 
 * {
@@ -108,6 +136,69 @@ h2 {
   letter-spacing: -0.01em;
 }
 
+.theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.theme-copy {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.segmented {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  gap: 3px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.seg-btn {
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 12.5px/1 system-ui, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.seg-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.seg-btn:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.seg-btn.is-active {
+  background: var(--seg-active-bg);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: var(--seg-active-shadow);
+}
+
+.seg-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .toggle-row {
   display: flex;
   align-items: flex-start;
@@ -180,7 +271,7 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  button, input[type="text"], .slider, .slider::before { transition: none; }
+  button, .seg-btn, input[type="text"], .slider, .slider::before { transition: none; }
 }
 
 .field-label {
@@ -216,7 +307,7 @@ input[type="text"].recording {
   outline: none;
 }
 
-button {
+.shortcut-row button {
   height: 38px;
   border: 1px solid transparent;
   border-radius: 9px;
@@ -228,26 +319,26 @@ button {
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
-button:hover {
+.shortcut-row button:hover {
   background: var(--accent-hover);
 }
 
-button:active {
+.shortcut-row button:active {
   transform: translateY(1px);
 }
 
-button.secondary {
+.shortcut-row button.secondary {
   background: var(--surface-subtle);
   border-color: var(--border);
   color: var(--text);
 }
 
-button.secondary:hover {
+.shortcut-row button.secondary:hover {
   border-color: var(--border-strong);
 }
 
 .hint {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: 12.5px;
   color: var(--muted);
   line-height: 1.5;
